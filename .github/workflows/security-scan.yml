@@ -33,10 +33,10 @@ jobs:
           echo "Scanning files in current directory:"
           find . -type f \( -name "*.yaml" -o -name "*.yml" -o -name "*.sh" -o -name "*.py" -o -name "*.json" \) | head -10
           
-          # Run semgrep with verbose output first to see what's happening
-          echo "Running Semgrep scan..."
+          # Run semgrep with community rules
+          echo "Running Semgrep scan with community rules..."
           semgrep scan \
-            --config p/security-audit,p/secrets,p/owasp-top-ten,p/bandit,p/flask,p/django,p/jwt,p/kubernetes,p/dockerfile,p/yaml,p/json,p/shell \
+            --config auto \
             --output semgrep-results.sarif \
             --sarif \
             --verbose || true
@@ -53,7 +53,7 @@ jobs:
           # Also run semgrep without SARIF to see findings in logs
           echo "Running Semgrep again to show findings in logs:"
           semgrep scan \
-            --config p/security-audit,p/secrets,p/owasp-top-ten,p/bandit,p/flask,p/django,p/jwt,p/kubernetes,p/dockerfile,p/yaml,p/json,p/shell \
+            --config auto \
             --json || true
 
       - name: Check if SARIF file exists
