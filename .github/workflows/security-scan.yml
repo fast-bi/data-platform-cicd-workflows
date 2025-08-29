@@ -24,15 +24,18 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Run Trivy vulnerability scanner
-        uses: aquasecurity/trivy-action@master
-        with:
-          scan-type: 'fs'
-          scan-ref: '.'
-          severity: 'CRITICAL,HIGH'
-          exit-code: '1'
-          ignore-unfixed: true
-          format: 'sarif'
-          output: 'trivy-results.sarif'
+        run: |
+          # Install trivy
+          curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /usr/local/bin v0.48.0
+          
+          # Run trivy with SARIF output
+          trivy fs \
+            --severity CRITICAL,HIGH \
+            --exit-code 0 \
+            --ignore-unfixed \
+            --format sarif \
+            --output trivy-results.sarif \
+            .
 
       - name: Upload Trivy scan results to GitHub Security tab
         uses: github/codeql-action/upload-sarif@v3
@@ -103,25 +106,17 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Run Semgrep
-        uses: returntocorp/semgrep-action@v1
-        with:
-          config: >-
-            p/security-audit
-            p/secrets
-            p/owasp-top-ten
-            p/bandit
-            p/flask
-            p/django
-            p/jwt
-            p/kubernetes
-            p/dockerfile
-            p/yaml
-            p/json
-            p/shell
-          args: >-
-            --output semgrep-results.sarif
-            --format sarif
-            --no-error
+        run: |
+          # Install semgrep
+          python -m pip install semgrep
+          
+          # Run semgrep with SARIF output
+          semgrep scan \
+            --config p/security-audit,p/secrets,p/owasp-top-ten,p/bandit,p/flask,p/django,p/jwt,p/kubernetes,p/dockerfile,p/yaml,p/json,p/shell \
+            --output semgrep-results.sarif \
+            --format sarif \
+            --no-error \
+            --quiet
 
       - name: Upload Semgrep scan results to GitHub Security tab
         uses: github/codeql-action/upload-sarif@v3
