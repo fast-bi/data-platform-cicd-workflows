@@ -29,12 +29,32 @@ jobs:
           # Install semgrep
           python -m pip install semgrep
           
-          # Run semgrep with SARIF output (exit code 7 means findings found, which is expected)
+          # Show what files we're scanning
+          echo "Scanning files in current directory:"
+          find . -type f \( -name "*.yaml" -o -name "*.yml" -o -name "*.sh" -o -name "*.py" -o -name "*.json" \) | head -10
+          
+          # Run semgrep with verbose output first to see what's happening
+          echo "Running Semgrep scan..."
           semgrep scan \
             --config p/security-audit,p/secrets,p/owasp-top-ten,p/bandit,p/flask,p/django,p/jwt,p/kubernetes,p/dockerfile,p/yaml,p/json,p/shell \
             --output semgrep-results.sarif \
             --sarif \
-            --quiet || true
+            --verbose || true
+          
+          # Check if SARIF file was created and show its size
+          if [ -f "semgrep-results.sarif" ]; then
+            echo "SARIF file created, size: $(wc -c < semgrep-results.sarif) bytes"
+            echo "First 200 characters of SARIF file:"
+            head -c 200 semgrep-results.sarif
+          else
+            echo "No SARIF file created"
+          fi
+          
+          # Also run semgrep without SARIF to see findings in logs
+          echo "Running Semgrep again to show findings in logs:"
+          semgrep scan \
+            --config p/security-audit,p/secrets,p/owasp-top-ten,p/bandit,p/flask,p/django,p/jwt,p/kubernetes,p/dockerfile,p/yaml,p/json,p/shell \
+            --json || true
 
       - name: Check if SARIF file exists
         run: |
