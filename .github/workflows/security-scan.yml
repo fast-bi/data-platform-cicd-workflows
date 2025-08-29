@@ -14,6 +14,7 @@ permissions:
   contents: read
   pull-requests: write
   security-events: write
+  actions: read
 
 jobs:
 
@@ -55,6 +56,13 @@ jobs:
           semgrep scan \
             --config auto \
             --json || true
+          
+          # Show a summary of findings
+          echo "=== SECURITY FINDINGS SUMMARY ==="
+          if [ -f "semgrep-results.sarif" ]; then
+            echo "Found $(jq '.runs[0].results | length' semgrep-results.sarif) security issues:"
+            jq -r '.runs[0].results[] | "• " + .rule.id + " in " + .locations[0].physicalLocation.artifactLocation.uri + ":" + (.locations[0].physicalLocation.region.startLine | tostring)' semgrep-results.sarif | head -10
+          fi
 
       - name: Check if SARIF file exists
         run: |
