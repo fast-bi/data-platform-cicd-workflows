@@ -50,33 +50,38 @@ jobs:
             let comment = '🔍 **Trivy Security Scan Results**\n\n';
             
             try {
-              const sarifData = JSON.parse(fs.readFileSync('trivy-results.sarif', 'utf8'));
-              const results = sarifData.runs?.[0]?.results || [];
-              
-              if (results.length === 0) {
-                comment += '✅ **No critical or high severity vulnerabilities found**\n\n';
-                comment += 'The scan checked for:\n';
-                comment += '- Dependency vulnerabilities\n';
-                comment += '- Secret leaks\n';
-                comment += '- Configuration issues\n';
-                comment += '- OS package vulnerabilities';
-              } else {
-                comment += `⚠️ **Found ${results.length} security issues**\n\n`;
-                comment += '**Issues found:**\n';
+              if (fs.existsSync('trivy-results.sarif')) {
+                const sarifData = JSON.parse(fs.readFileSync('trivy-results.sarif', 'utf8'));
+                const results = sarifData.runs?.[0]?.results || [];
                 
-                results.slice(0, 10).forEach((result, index) => {
-                  const rule = result.rule?.id || 'Unknown';
-                  const message = result.message?.text || 'No description';
-                  const severity = result.level || 'UNKNOWN';
-                  comment += `${index + 1}. **${rule}** (${severity})\n`;
-                  comment += `   ${message}\n\n`;
-                });
-                
-                if (results.length > 10) {
-                  comment += `... and ${results.length - 10} more issues\n\n`;
+                if (results.length === 0) {
+                  comment += '✅ **No critical or high severity vulnerabilities found**\n\n';
+                  comment += 'The scan checked for:\n';
+                  comment += '- Dependency vulnerabilities\n';
+                  comment += '- Secret leaks\n';
+                  comment += '- Configuration issues\n';
+                  comment += '- OS package vulnerabilities';
+                } else {
+                  comment += `⚠️ **Found ${results.length} security issues**\n\n`;
+                  comment += '**Issues found:**\n';
+                  
+                  results.slice(0, 10).forEach((result, index) => {
+                    const rule = result.rule?.id || 'Unknown';
+                    const message = result.message?.text || 'No description';
+                    const severity = result.level || 'UNKNOWN';
+                    comment += `${index + 1}. **${rule}** (${severity})\n`;
+                    comment += `   ${message}\n\n`;
+                  });
+                  
+                  if (results.length > 10) {
+                    comment += `... and ${results.length - 10} more issues\n\n`;
+                  }
+                  
+                  comment += '🔗 View full results in the [Security tab](https://github.com/${{ github.repository }}/security/code-scanning)';
                 }
-                
-                comment += '🔗 View full results in the [Security tab](https://github.com/${{ github.repository }}/security/code-scanning)';
+              } else {
+                comment += '✅ **No critical or high severity vulnerabilities found**\n\n';
+                comment += 'The scan completed successfully with no issues detected.';
               }
             } catch (error) {
               comment += '❌ **Error processing scan results**\n\n';
@@ -113,9 +118,10 @@ jobs:
             p/yaml
             p/json
             p/shell
-          output-format: sarif
-          output-file: semgrep-results.sarif
-          error-on-findings: false
+          args: >-
+            --output semgrep-results.sarif
+            --format sarif
+            --no-error
 
       - name: Upload Semgrep scan results to GitHub Security tab
         uses: github/codeql-action/upload-sarif@v3
@@ -133,45 +139,50 @@ jobs:
             let comment = '🔍 **Semgrep Static Analysis Results**\n\n';
             
             try {
-              const sarifData = JSON.parse(fs.readFileSync('semgrep-results.sarif', 'utf8'));
-              const results = sarifData.runs?.[0]?.results || [];
-              
-              if (results.length === 0) {
-                comment += '✅ **No security issues found in code**\n\n';
-                comment += 'The scan checked for:\n';
-                comment += '- OWASP Top 10 vulnerabilities\n';
-                comment += '- Security best practices\n';
-                comment += '- Secret leaks in code\n';
-                comment += '- Common misconfigurations\n';
-                comment += '- Kubernetes security issues\n';
-                comment += '- Docker security best practices';
-              } else {
-                const criticalHigh = results.filter(r => r.level === 'error' || r.level === 'warning');
-                const info = results.filter(r => r.level === 'note');
+              if (fs.existsSync('semgrep-results.sarif')) {
+                const sarifData = JSON.parse(fs.readFileSync('semgrep-results.sarif', 'utf8'));
+                const results = sarifData.runs?.[0]?.results || [];
                 
-                comment += `⚠️ **Found ${results.length} code quality/security issues**\n\n`;
-                
-                if (criticalHigh.length > 0) {
-                  comment += `**Critical/High Priority (${criticalHigh.length}):**\n`;
-                  criticalHigh.slice(0, 5).forEach((result, index) => {
-                    const rule = result.rule?.id || 'Unknown';
-                    const message = result.message?.text || 'No description';
-                    const location = result.locations?.[0]?.physicalLocation?.artifactLocation?.uri || 'Unknown file';
-                    comment += `${index + 1}. **${rule}** in \`${location}\`\n`;
-                    comment += `   ${message}\n\n`;
-                  });
+                if (results.length === 0) {
+                  comment += '✅ **No security issues found in code**\n\n';
+                  comment += 'The scan checked for:\n';
+                  comment += '- OWASP Top 10 vulnerabilities\n';
+                  comment += '- Security best practices\n';
+                  comment += '- Secret leaks in code\n';
+                  comment += '- Common misconfigurations\n';
+                  comment += '- Kubernetes security issues\n';
+                  comment += '- Docker security best practices';
+                } else {
+                  const criticalHigh = results.filter(r => r.level === 'error' || r.level === 'warning');
+                  const info = results.filter(r => r.level === 'note');
                   
-                  if (criticalHigh.length > 5) {
-                    comment += `... and ${criticalHigh.length - 5} more critical/high issues\n\n`;
+                  comment += `⚠️ **Found ${results.length} code quality/security issues**\n\n`;
+                  
+                  if (criticalHigh.length > 0) {
+                    comment += `**Critical/High Priority (${criticalHigh.length}):**\n`;
+                    criticalHigh.slice(0, 5).forEach((result, index) => {
+                      const rule = result.rule?.id || 'Unknown';
+                      const message = result.message?.text || 'No description';
+                      const location = result.locations?.[0]?.physicalLocation?.artifactLocation?.uri || 'Unknown file';
+                      comment += `${index + 1}. **${rule}** in \`${location}\`\n`;
+                      comment += `   ${message}\n\n`;
+                    });
+                    
+                    if (criticalHigh.length > 5) {
+                      comment += `... and ${criticalHigh.length - 5} more critical/high issues\n\n`;
+                    }
                   }
+                  
+                  if (info.length > 0) {
+                    comment += `**Info/Suggestions (${info.length}):**\n`;
+                    comment += `${info.length} additional code quality suggestions found.\n\n`;
+                  }
+                  
+                  comment += '🔗 View full results in the [Security tab](https://github.com/${{ github.repository }}/security/code-scanning)';
                 }
-                
-                if (info.length > 0) {
-                  comment += `**Info/Suggestions (${info.length}):**\n`;
-                  comment += `${info.length} additional code quality suggestions found.\n\n`;
-                }
-                
-                comment += '🔗 View full results in the [Security tab](https://github.com/${{ github.repository }}/security/code-scanning)';
+              } else {
+                comment += '✅ **No security issues found in code**\n\n';
+                comment += 'The scan completed successfully with no issues detected.';
               }
             } catch (error) {
               comment += '❌ **Error processing scan results**\n\n';
@@ -214,25 +225,30 @@ jobs:
             let comment = '🔍 **YAML Linting Results**\n\n';
             
             try {
-              const yamlResults = fs.readFileSync('yamllint-results.txt', 'utf8').trim();
-              
-              if (!yamlResults) {
+              if (fs.existsSync('yamllint-results.txt')) {
+                const yamlResults = fs.readFileSync('yamllint-results.txt', 'utf8').trim();
+                
+                if (!yamlResults) {
+                  comment += '✅ **No YAML linting issues found**\n\n';
+                  comment += 'All YAML files follow best practices and are properly formatted.';
+                } else {
+                  const issues = yamlResults.split('\n').filter(line => line.trim());
+                  comment += `⚠️ **Found ${issues.length} YAML linting issues**\n\n`;
+                  comment += '**Issues found:**\n';
+                  
+                  issues.slice(0, 10).forEach((issue, index) => {
+                    comment += `${index + 1}. \`${issue}\`\n`;
+                  });
+                  
+                  if (issues.length > 10) {
+                    comment += `... and ${issues.length - 10} more issues\n\n`;
+                  }
+                  
+                  comment += '💡 Run `yamllint .` locally to see all issues.';
+                }
+              } else {
                 comment += '✅ **No YAML linting issues found**\n\n';
                 comment += 'All YAML files follow best practices and are properly formatted.';
-              } else {
-                const issues = yamlResults.split('\n').filter(line => line.trim());
-                comment += `⚠️ **Found ${issues.length} YAML linting issues**\n\n`;
-                comment += '**Issues found:**\n';
-                
-                issues.slice(0, 10).forEach((issue, index) => {
-                  comment += `${index + 1}. \`${issue}\`\n`;
-                });
-                
-                if (issues.length > 10) {
-                  comment += `... and ${issues.length - 10} more issues\n\n`;
-                }
-                
-                comment += '💡 Run `yamllint .` locally to see all issues.';
               }
             } catch (error) {
               comment += '❌ **Error processing YAML lint results**\n\n';
