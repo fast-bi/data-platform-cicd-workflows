@@ -1,0 +1,1807 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Workflow
+metadata:
+  generateName: fastbi-branch-workflow-
+spec:
+  templates:
+    - name: exit-handler
+      inputs: {}
+      outputs: {}
+      metadata: {}
+      steps:
+        - - name: check-all-task-status
+            template: check-task-status
+            arguments:
+              parameters:
+                - name: workflow_status
+                  value: '{{workflow.failures}}'
+                - name: argo_main_address
+                  value: '{{workflow.parameters.argo_main_address}}'
+    - name: main
+      inputs:
+        parameters:
+          - name: repo_url
+          - name: revision
+          - name: branch
+          - name: git_username
+          - name: git_token
+          - name: commit_short_sha
+      outputs: {}
+      metadata: {}
+      steps:
+        - - name: checkout
+            template: checkout
+            arguments:
+              parameters:
+                - name: repo_url
+                  value: '{{inputs.parameters.repo_url}}'
+                - name: revision
+                  value: '{{inputs.parameters.revision}}'
+                - name: git_username
+                  value: '{{inputs.parameters.git_username}}'
+                - name: git_token
+                  value: '{{inputs.parameters.git_token}}'
+        - - name: detect-changes
+            template: detect-changes
+            arguments:
+              parameters:
+                - name: revision
+                  value: '{{inputs.parameters.revision}}'
+        - - name: lint-yaml
+            template: lint-yaml
+            arguments:
+              parameters:
+                - name: branch
+                  value: '{{inputs.parameters.branch}}'
+            continueOn:
+              failed: true
+        - - name: lint-sql
+            template: lint-sql
+            arguments:
+              parameters:
+                - name: branch
+                  value: '{{inputs.parameters.branch}}'
+            continueOn:
+              failed: true
+        - - name: check-documentation-completion
+            template: check-documentation-completion
+            arguments:
+              parameters:
+                - name: branch
+                  value: '{{inputs.parameters.branch}}'
+            continueOn:
+              failed: true
+        - - name: check-tests-completion
+            template: check-tests-completion
+            arguments:
+              parameters:
+                - name: branch
+                  value: '{{inputs.parameters.branch}}'
+            continueOn:
+              failed: true
+        - - name: validating-da-dependencies
+            template: validating-da-dependencies
+            arguments:
+              parameters:
+                - name: branch
+                  value: '{{inputs.parameters.branch}}'
+                - name: commit_short_sha
+                  value: '{{inputs.parameters.commit_short_sha}}'
+            continueOn:
+              failed: true
+            when: "{{workflow.parameters.check_on_branch}} == true"
+        - - name: k8s-pvc-cleanup
+            template: k8s-pvc-cleanup
+            arguments: {}
+            when: >-
+              {{workflow.status}} != Succeeded || {{workflow.status}} ==
+              Succeeded
+    - name: checkout
+      inputs:
+        parameters:
+          - name: repo_url
+          - name: revision
+          - name: git_username
+          - name: git_token
+      outputs: {}
+      metadata: {}
+      container:
+        name: ''
+        image: alpine/git
+        command:
+          - sh
+          - '-c'
+        args:
+          - >
+            #!/bin/sh
+
+
+            # ===========================================
+            # 🚀 Repository Checkout Script
+            # ===========================================
+
+
+            echo "==========================================="
+            echo "🚀 [INFO] Starting repository checkout process"
+            echo "==========================================="
+
+            # ===========================================
+            # 📋 [CONFIG] System Setup
+            # ===========================================
+
+            echo "⚙️ [PROCESS] Installing required packages..."
+
+            apk add --no-cache jq || { echo "❌ [ERROR] Failed to install jq package"; exit 1; }
+
+            # ===========================================
+            # 🔍 [CHECK] Environment Validation
+            # ===========================================
+
+            echo "🔍 [CHECK] Validating repository configuration..."
+
+            REPO_URL="{{inputs.parameters.repo_url}}"
+            REPO_URL_NO_PROTOCOL="${REPO_URL#https://}"
+
+            echo "📋 [CONFIG] Repository URL configured: ${REPO_URL%/*}/[REPO_NAME]"
+
+            # ===========================================
+            # ⚙️ [PROCESS] Git Configuration
+            # ===========================================
+
+            echo "⚙️ [PROCESS] Configuring git settings..."
+
+            git config --global advice.detachedHead false || { echo "❌ [ERROR] Failed to configure global git settings"; exit 1; }
+
+            # ===========================================
+            # 🚀 [INFO] Repository Operations
+            # ===========================================
+
+            echo "🚀 [INFO] Cloning repository..."
+
+            git clone https://{{inputs.parameters.git_username}}:{{inputs.parameters.git_token}}@${REPO_URL_NO_PROTOCOL} /workdir/src || { echo "❌ [ERROR] Failed to clone repository"; exit 1; }
+
+            echo "⚙️ [PROCESS] Navigating to repository directory..."
+
+            cd /workdir/src || { echo "❌ [ERROR] Failed to navigate to repository directory"; exit 1; }
+
+            echo "⚙️ [PROCESS] Configuring local git settings..."
+
+            git config advice.detachedHead false || { echo "❌ [ERROR] Failed to configure local git settings"; exit 1; }
+
+            echo "⚙️ [PROCESS] Checking out specified revision..."
+
+            git checkout {{inputs.parameters.revision}} || { echo "❌ [ERROR] Failed to checkout revision {{inputs.parameters.revision}}"; exit 1; }
+
+            # ===========================================
+            # ✅ [SUCCESS] Completion
+            # ===========================================
+
+            echo "==========================================="
+
+            echo "✅ [SUCCESS] Repository cloned and checked out successfully"
+            
+            echo "📋 [INFO] Working directory: /workdir/src"
+            
+            echo "📋 [INFO] Revision: {{inputs.parameters.revision}}"
+            
+            echo "==========================================="
+        resources: {}
+        volumeMounts:
+          - name: workdir
+            mountPath: /workdir
+    - name: detect-changes
+      inputs:
+        parameters:
+          - name: revision
+      outputs: {}
+      metadata: {}
+      container:
+        name: ''
+        image: alpine/git
+        command:
+          - sh
+          - '-c'
+        args:
+          - |
+            #!/bin/sh
+
+            echo "==========================================="
+            echo "🚀 [INFO] Git Change Detection Script"
+            echo "==========================================="
+
+            echo "⚙️ [PROCESS] Changing to source directory"
+
+            cd /workdir/src || { echo "❌ [ERROR] Failed to change to /workdir/src directory"; exit 1; }
+
+            echo "🔍 [CHECK] Detecting changed folders from revision: {{inputs.parameters.revision}}"
+
+            git diff-tree --no-commit-id --name-only -r {{inputs.parameters.revision}} \
+              | cut -d'/' -f1 \
+              | sort \
+              | uniq > /workdir/changed_folders.txt || { echo "❌ [ERROR] Failed to identify changed folders"; exit 1; }
+
+            echo "⚙️ [PROCESS] Filtering out hidden folders"
+
+            > /workdir/temp.txt
+            while read -r line; do
+              # Remove leading whitespace (if any)
+              line=$(echo "$line" | sed 's/^[ \t]*//')
+              # Get the first character
+              first_char=$(echo "$line" | cut -c1)
+              if [ "$first_char" != "." ]; then
+                echo "$line" >> /workdir/temp.txt
+              fi
+            done < /workdir/changed_folders.txt
+
+            mv /workdir/temp.txt /workdir/changed_folders.txt
+
+            echo "🔍 [CHECK] Validating change detection results"
+
+            if [ ! -s /workdir/changed_folders.txt ]; then
+              echo "⚠️ [WARNING] No changes detected, defaulting to README.md"
+              echo "README.md" > /workdir/changed_folders.txt
+            fi
+
+            echo "✅ [SUCCESS] Change detection completed successfully"
+            echo "📋 Folders changed: $(cat /workdir/changed_folders.txt)"
+            echo "📋 [CONFIG] Changed folders have been identified and filtered"
+            echo "==========================================="
+        resources: {}
+        volumeMounts:
+          - name: workdir
+            mountPath: /workdir
+    - name: lint-yaml
+      inputs:
+        parameters:
+          - name: branch
+      outputs: {}
+      metadata: {}
+      container:
+        name: ''
+        image: cytopia/yamllint
+        command:
+          - sh
+          - '-c'
+        args:
+          - |
+            #!/bin/bash
+
+
+            echo "==========================================="
+            echo "🚀 [INFO] Starting YAML Linting Procedure"
+            echo "📋 [CONFIG] Target Branch: {{inputs.parameters.branch}}"
+            echo "==========================================="
+
+            # Navigate to source directory
+            echo "⚙️ [PROCESS] Changing to source directory"
+
+            cd /workdir/src || { echo "❌ [ERROR] Failed to change to source directory"; exit 1; }
+
+            # Process each folder for YAML linting
+            echo "==========================================="
+            echo "🔍 [CHECK] Processing folders for YAML linting"
+            echo "==========================================="
+
+            while read folder; do
+              if [ -d "$folder" ]; then
+                echo "⚙️ [PROCESS] Linting YAML files in: $folder"
+                cd "$folder" || { echo "❌ [ERROR] Failed to change to folder: $folder"; exit 1; }
+                yamllint -c yamllint-config.yaml -f colored --no-warnings . 2>&1 | tee -a ../yamllint_lint.log || true
+                cd .. || { echo "❌ [ERROR] Failed to return to parent directory"; exit 1; }
+              else
+                echo "⚠️ [WARNING] Skipping root directory processing"
+                touch ../yamllint_lint.log
+                echo "Working on root - skip" >> ../yamllint_lint.log
+              fi
+            done < /workdir/changed_folders.txt
+
+            # Validate linting results
+            echo "==========================================="
+            echo "🔍 [CHECK] Validating YAML linting results"
+            echo "==========================================="
+
+            while read line; do
+              echo "${line}" | grep -i "error" > /dev/null
+              
+              if [[ $? = 0 ]]; then
+                echo "❌ [ERROR] YAML linting errors detected in log file"
+                echo "❌ [ERROR] Error details: ${line}"
+                sleep 5
+                exit 1
+              fi
+            done < ./yamllint_lint.log
+
+            echo "==========================================="
+            echo "✅ [SUCCESS] YAML Linting Procedure Completed"
+            echo "==========================================="
+        resources: {}
+        volumeMounts:
+          - name: workdir
+            mountPath: /workdir
+    - name: lint-sql
+      inputs:
+        parameters:
+          - name: branch
+      outputs: {}
+      metadata: {}
+      container:
+        name: ''
+        image: '{{workflow.parameters.docker_image_repository_hub}}/{{workflow.parameters.docker_image_repository}}/{{workflow.parameters.tsb_sqlfluff_core_image_name}}:{{workflow.parameters.tsb_sqlfluff_core_image_tag}}'
+        command:
+          - bash
+          - '-c'
+        args:
+          - |
+            #!/bin/bash
+
+
+            echo "==========================================="
+            echo "🚀 [INFO] DBT SQL File Linting Procedure"
+            echo "📋 [CONFIG] Branch: {{inputs.parameters.branch}}"
+            echo "==========================================="
+
+            echo "⚙️ [PROCESS] Changing to source directory"
+            cd /workdir/src || { echo "❌ [ERROR] Failed to change to source directory"; exit 1; }
+            export GIT_BRANCH={{inputs.parameters.branch}}
+
+            echo "🔍 [CHECK] Processing changed folders for SQL linting"
+            while read folder; do
+              if [ -d "$folder" ]; then
+                echo "⚙️ [PROCESS] Linting SQL in folder: $folder"
+                cd "$folder" || { echo "❌ [ERROR] Failed to change to folder: $folder"; exit 1; }
+                
+                echo "📋 [CONFIG] Setting up warehouse credentials"
+                
+                # BigQuery Configuration
+                if [[ "${DATA_WAREHOUSE_PLATFORM,,}" == "bigquery" ]]; then
+                  if [[ -z "$GCP_SA_SECRET" ]]; then
+                    echo "❌ [ERROR] Google BigQuery credentials are missing: Service Account JSON not provided"
+                    exit 1
+                  else
+                    if [[ -z "$GOOGLE_APPLICATION_CREDENTIALS" ]]; then
+                      echo "🔐 [CONFIG] Setting up BigQuery authentication"
+                      echo "$GCP_SA_SECRET" | base64 --decode > /secrets/sa.json
+                      gcloud auth activate-service-account --key-file /secrets/sa.json
+                      gcloud config set project $GCP_PROJECT_NAME
+                      export GOOGLE_APPLICATION_CREDENTIALS="/secrets/sa.json"
+                    fi
+                  fi
+                fi
+                
+                # Snowflake Configuration
+                if [[ "${DATA_WAREHOUSE_PLATFORM,,}" == "snowflake" ]]; then
+                  if [[ -z "$SNOWFLAKE_PRIVATE_KEY" || -z "$SNOWFLAKE_PASSPHRASE" ]]; then
+                    echo "❌ [ERROR] Snowflake credentials are missing: Private Key and Passphrase not provided"
+                    exit 1
+                  else
+                    if [[ -z "$SNOWSQL_PRIVATE_KEY_PASSPHRASE" ]]; then
+                      echo "🔐 [CONFIG] Setting up Snowflake authentication"
+                      mkdir -p /snowsql/secrets/
+                      echo "$SNOWFLAKE_PRIVATE_KEY" > /snowsql/secrets/rsa_key.p8
+                      chmod 600 /snowsql/secrets/rsa_key.p8
+                      export SNOWSQL_PRIVATE_KEY_PASSPHRASE=$SNOWFLAKE_PASSPHRASE
+                    fi
+                  fi
+                fi
+                
+                # Redshift Configuration
+                if [[ "${DATA_WAREHOUSE_PLATFORM,,}" == "redshift" ]]; then
+                  if [[ -z "$REDSHIFT_PASSWORD" || -z "$REDSHIFT_USER" || -z "$REDSHIFT_HOST" || -z "$REDSHIFT_DATABASE" || -z "$REDSHIFT_PORT" ]]; then
+                    echo "❌ [ERROR] Redshift credentials are missing: username and/or password not provided"
+                    exit 1
+                  fi
+                fi
+                
+                # Fabric Configuration
+                if [[ "${DATA_WAREHOUSE_PLATFORM,,}" == "fabric" ]]; then
+                  if [[ -z "$FABRIC_SERVER" || -z "$FABRIC_DATABASE" || -z "$FABRIC_PORT" || -z "$FABRIC_USER" || -z "$FABRIC_PASSWORD" || -z "$FABRIC_AUTHENTICATION" ]]; then
+                    echo "❌ [ERROR] Fabric credentials are missing: one or more required parameters not provided"
+                    exit 1
+                  fi
+                fi
+
+                echo "⚙️ [PROCESS] Installing DBT dependencies"
+                dbt deps --quiet 2>&1
+                
+                echo "🔍 [CHECK] Running SQLFluff linting with parallel processing"
+                sqlfluff lint --annotation-level failure -p 8 . 2>&1 | tee -a ../sqlfuff_lint.log || true
+                
+                echo "✅ [SUCCESS] SQL linting completed for folder: $folder"
+                cd ..
+              else
+                echo "⚠️ [WARNING] Working on root - skipping folder processing"
+                touch ../sqlfuff_lint.log
+                echo "Working on root - skip" >> ../sqlfuff_lint.log
+              fi
+            done < /workdir/changed_folders.txt
+
+            echo "==========================================="
+            echo "🔍 [CHECK] Analyzing SQLFluff Lint Results"
+            echo "==========================================="
+
+            echo "⚙️ [PROCESS] Reading SQLFluff log file for errors"
+            error_found=0
+
+            while read -r line; do
+              # Check for SQLFluff error patterns: L: | P: | LT | layout. | core. | references. | etc.
+              if echo "$line" | grep -E "(L:\s+\d+\s+\|\s+P:\s+\d+\s+\|\s+[A-Z]+\d+\s+\|)" > /dev/null; then
+                echo "❌ [ERROR] SQL linting error found: $line"
+                error_found=1
+              fi
+              # Also check for the "FAIL" status at the end of file processing
+              if echo "$line" | grep -E "==\s+\[.*\.sql\]\s+FAIL" > /dev/null; then
+                echo "❌ [ERROR] SQL file failed linting: $line"
+                error_found=1
+              fi
+            done < sqlfuff_lint.log
+
+            echo "==========================================="
+            if [ $error_found -eq 1 ]; then
+              echo "❌ [ERROR] SQL linting failed. Please check the logs for details."
+              exit 1
+            else
+              echo "✅ [SUCCESS] All SQL files passed linting validation"
+            fi
+            echo "==========================================="
+
+            echo "🎉 [COMPLETE] DBT SQL File linting procedure finished successfully"
+        env:
+          - name: DATA_WAREHOUSE_PLATFORM
+            valueFrom:
+              secretKeyRef:
+                name: fastbi-argo-workflows-secrets
+                key: DATA_WAREHOUSE_PLATFORM
+          - name: GCP_PROJECT_NAME
+            valueFrom:
+              secretKeyRef:
+                name: fastbi-argo-workflows-secrets
+                key: GCP_PROJECT_NAME
+          - name: GCP_SA_SECRET
+            valueFrom:
+              secretKeyRef:
+                name: fastbi-argo-workflows-secrets
+                key: GCP_SA_SECRET
+          # Redshift secrets
+          - name: REDSHIFT_HOST
+            valueFrom:
+              secretKeyRef:
+                name: fastbi-argo-workflows-secrets
+                key: REDSHIFT_HOST
+                optional: true
+          - name: REDSHIFT_DATABASE
+            valueFrom:
+              secretKeyRef:
+                name: fastbi-argo-workflows-secrets
+                key: REDSHIFT_DATABASE
+                optional: true
+          - name: REDSHIFT_PORT
+            valueFrom:
+              secretKeyRef:
+                name: fastbi-argo-workflows-secrets
+                key: REDSHIFT_PORT
+                optional: true
+          - name: REDSHIFT_USER
+            valueFrom:
+              secretKeyRef:
+                name: fastbi-argo-workflows-secrets
+                key: REDSHIFT_USER
+                optional: true
+          - name: REDSHIFT_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: fastbi-argo-workflows-secrets
+                key: REDSHIFT_PASSWORD
+                optional: true
+          # Snowflake secrets
+          - name: SNOWFLAKE_PRIVATE_KEY
+            valueFrom:
+              secretKeyRef:
+                name: fastbi-argo-workflows-secrets
+                key: SNOWFLAKE_PRIVATE_KEY
+                optional: true
+          - name: SNOWFLAKE_PASSPHRASE
+            valueFrom:
+              secretKeyRef:
+                name: fastbi-argo-workflows-secrets
+                key: SNOWFLAKE_PASSPHRASE
+                optional: true
+          # Fabric secrets
+          - name: FABRIC_SERVER
+            valueFrom:
+              secretKeyRef:
+                name: fastbi-argo-workflows-secrets
+                key: FABRIC_SERVER
+                optional: true
+          - name: FABRIC_DATABASE
+            valueFrom:
+              secretKeyRef:
+                name: fastbi-argo-workflows-secrets
+                key: FABRIC_DATABASE
+                optional: true
+          - name: FABRIC_PORT
+            valueFrom:
+              secretKeyRef:
+                name: fastbi-argo-workflows-secrets
+                key: FABRIC_PORT
+                optional: true
+          - name: FABRIC_USER
+            valueFrom:
+              secretKeyRef:
+                name: fastbi-argo-workflows-secrets
+                key: FABRIC_USER
+                optional: true
+          - name: FABRIC_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: fastbi-argo-workflows-secrets
+                key: FABRIC_PASSWORD
+                optional: true
+          - name: FABRIC_AUTHENTICATION
+            valueFrom:
+              secretKeyRef:
+                name: fastbi-argo-workflows-secrets
+                key: FABRIC_AUTHENTICATION
+                optional: true
+        resources: {}
+        volumeMounts:
+          - name: workdir
+            mountPath: /workdir
+          - name: gcp-sa-secret-file
+            mountPath: /secrets
+    - name: check-documentation-completion
+      inputs:
+        parameters:
+          - name: branch
+      outputs: {}
+      metadata: {}
+      container:
+        name: ''
+        image: '{{workflow.parameters.docker_image_repository_hub}}/{{workflow.parameters.docker_image_repository}}/{{workflow.parameters.tsb_dbt_core_image_name}}:{{workflow.parameters.tsb_dbt_core_image_tag}}'
+        command:
+          - bash
+          - '-c'
+        args:
+          - |
+            #!/bin/bash
+
+
+            echo "==========================================="
+            echo "🚀 [INFO] DBT Project Documentation Review"
+            echo "==========================================="
+            echo "📋 [CONFIG] Starting documentation review procedure on Branch: {{inputs.parameters.branch}}"
+            export GIT_BRANCH={{inputs.parameters.branch}}
+
+            cd /workdir/src
+
+            echo "==========================================="
+            echo "🔍 [CHECK] Processing DBT Projects"
+            echo "==========================================="
+
+            while read folder; do
+              if [ -d "$folder" ]; then
+                echo "⚙️ [PROCESS] Running documentation check in $folder"
+                cd "$folder"
+                
+                echo "==========================================="
+                echo "🔐 [CONFIG] Setting up Data Warehouse Credentials"
+                echo "==========================================="
+                
+                #Set warehouse credentials
+                if [[ "${DATA_WAREHOUSE_PLATFORM,,}" == "bigquery" ]]; then
+                  if [[ -z "$GCP_SA_SECRET" ]]; then
+                    echo "❌ [ERROR] Google Bigquery credentials are missing: Service Account JSON not provided"
+                    exit 1
+                  else
+                    if [[ -z "$GOOGLE_APPLICATION_CREDENTIALS" ]]; then
+                      echo "🔐 [CONFIG] Setting up Google Cloud authentication"
+                      echo "$GCP_SA_SECRET" | base64 --decode > /secrets/sa.json
+                      gcloud auth activate-service-account --key-file /secrets/sa.json
+                      gcloud config set project $GCP_PROJECT_NAME
+                      export GOOGLE_APPLICATION_CREDENTIALS="/secrets/sa.json"
+                      echo "✅ [SUCCESS] Google Cloud authentication configured"
+                    fi
+                  fi
+                fi
+                
+                if [[ "${DATA_WAREHOUSE_PLATFORM,,}" == "snowflake" ]]; then
+                  if [[ -z "$SNOWFLAKE_PRIVATE_KEY" || -z "$SNOWFLAKE_PASSPHRASE" ]]; then
+                    echo "❌ [ERROR] Snowflake credentials are missing: Private Key and Passphrase not provided"
+                    exit 1
+                  else
+                    if [[ -z "$SNOWSQL_PRIVATE_KEY_PASSPHRASE" ]]; then
+                      echo "🔐 [CONFIG] Setting up Snowflake authentication"
+                      mkdir -p /snowsql/secrets/
+                      echo "$SNOWFLAKE_PRIVATE_KEY" > /snowsql/secrets/rsa_key.p8
+                      chmod 600 /snowsql/secrets/rsa_key.p8
+                      export SNOWSQL_PRIVATE_KEY_PASSPHRASE=$SNOWFLAKE_PASSPHRASE
+                      echo "✅ [SUCCESS] Snowflake authentication configured"
+                    fi
+                  fi
+                fi
+                
+                if [[ "${DATA_WAREHOUSE_PLATFORM,,}" == "redshift" ]]; then
+                  if [[ -z "$REDSHIFT_PASSWORD" || -z "$REDSHIFT_USER" || -z "$REDSHIFT_HOST" || -z "$REDSHIFT_DATABASE" || -z "$REDSHIFT_PORT" ]]; then
+                    echo "❌ [ERROR] Redshift credentials are missing: username and/or password not provided"
+                    exit 1
+                  else
+                    echo "✅ [SUCCESS] Redshift credentials validated"
+                  fi
+                fi
+                
+                if [[ "${DATA_WAREHOUSE_PLATFORM,,}" == "fabric" ]]; then
+                  if [[ -z "$FABRIC_SERVER" || -z "$FABRIC_DATABASE" || -z "$FABRIC_PORT" || -z "$FABRIC_USER" || -z "$FABRIC_PASSWORD" || -z "$FABRIC_AUTHENTICATION" ]]; then
+                    echo "❌ [ERROR] Fabric credentials are missing: one or more required parameters not provided"
+                    exit 1
+                  else
+                    echo "✅ [SUCCESS] Fabric credentials validated"
+                  fi
+                fi
+
+                echo "==========================================="
+                echo "📋 [CONFIG] Setting Documentation Coverage Threshold"
+                echo "==========================================="
+                
+                export DOC_COVERAGE_THRESHOLD=$(grep 'DOC_COVERAGE_THRESHOLD:' "$AIRFLOW_SECRET_FILE_NAME" | tail -n1 | awk '{print $2}' | tr -d "'")
+                if [ -z "$DOC_COVERAGE_THRESHOLD" ]; then
+                  export DOC_COVERAGE_THRESHOLD='0.9'
+                  echo "📋 [CONFIG] Using default documentation coverage threshold: 90%"
+                else
+                  echo "📋 [CONFIG] Documentation coverage threshold configured: ${DOC_COVERAGE_THRESHOLD}%"
+                fi
+
+                echo "==========================================="
+                echo "🧹 [PROCESS] Cleaning DBT Project Dependencies"
+                echo "==========================================="
+                
+                #Remove Package re_data:
+                remove_re_data_package() {
+                    local packages_file="${1:-packages.yml}"
+                    
+                    # Check if file exists
+                    if [[ ! -f "$packages_file" ]]; then
+                        echo "❌ [ERROR] File '$packages_file' not found" >&2
+                        return 1
+                    fi
+                    
+                    # Check if re-data/re_data exists in the file
+                    if grep -q "package: re-data/re_data" "$packages_file"; then
+                        echo "⚙️ [PROCESS] Found re-data/re_data package, removing it..."
+                        
+                        # Create a temporary file
+                        local temp_file=$(mktemp)
+                        
+                        # Use yq to remove the package entry
+                        yq 'del(.packages[] | select(.package == "re-data/re_data"))' "$packages_file" > "$temp_file"
+                        
+                        # Check if yq command succeeded
+                        if [[ $? -ne 0 ]]; then
+                            echo "❌ [ERROR] Failed to process YAML with yq" >&2
+                            rm -f "$temp_file"
+                            return 1
+                        fi
+                        
+                        # Replace original file with the modified version
+                        mv "$temp_file" "$packages_file"
+                        
+                        echo "✅ [SUCCESS] Successfully removed re-data/re_data package from $packages_file"
+
+                        # Force recompilation by removing manifest
+                        dbt clean --quiet 2>&1
+
+                        return 0
+                    else
+                        echo "📋 [CONFIG] Package re-data/re_data not found in $packages_file"
+                        return 0
+                    fi
+                }
+
+                # Remove macro for Table Sample set_data_tablesample.sql
+                remove_set_data_tablesample_macro() {
+                    root_macro_folder="./macros"
+                    local macro_file="set_data_tablesample.sql"
+                    if [ -f "$root_macro_folder/$macro_file" ]; then
+                        echo "⚙️ [PROCESS] Found set_data_tablesample.sql macro, removing it..."
+                        rm -f "$root_macro_folder/$macro_file"
+                        echo "✅ [SUCCESS] Successfully removed set_data_tablesample.sql macro"
+                    else
+                        echo "📋 [CONFIG] set_data_tablesample.sql macro not found in $root_macro_folder"
+                        return 0
+                    fi
+                }
+
+                remove_set_data_tablesample_macro
+
+                remove_re_data_package
+
+                echo "==========================================="
+                echo "⚙️ [PROCESS] Building DBT Project"
+                echo "==========================================="
+                
+                echo "⚙️ [PROCESS] Installing DBT dependencies"
+                dbt deps --quiet 2>&1
+                
+                echo "⚙️ [PROCESS] Building DBT models"
+                dbt build --target ${TARGET} --empty --quiet 2>&1
+                
+                echo "⚙️ [PROCESS] Generating DBT documentation"
+                dbt docs generate --target ${TARGET} --quiet 2>&1
+
+                echo "==========================================="
+                echo "🔍 [CHECK] Running Documentation Validation"
+                echo "==========================================="
+                
+                # Run the documentation check and display output in real-time
+                python /usr/app/dbt/dbt_lint/check_dbt_documentation.py 2>&1 | tee /dev/tty
+                doc_check_exit_code=${PIPESTATUS[0]}
+
+                echo "==========================================="
+                echo "📋 [PROCESS] Processing Documentation Results"
+                echo "==========================================="
+                
+                # Copy the log file to the parent directory for error checking
+                if [ -f "dbt_documentation.log" ]; then
+                  echo "📋 [CONFIG] Copying documentation log file"
+                  cp dbt_documentation.log ../dbt_documentation_lint.log
+                fi
+
+                cd ..
+
+                echo "==========================================="
+                echo "🔍 [CHECK] Validating Documentation Results"
+                echo "==========================================="
+                
+                # Check for errors in the log file
+                if [ -f "dbt_documentation_lint.log" ]; then
+                  if grep -q "^ERROR:" dbt_documentation_lint.log || [ $doc_check_exit_code -ne 0 ]; then
+                    echo "❌ [ERROR] Documentation check failed. Check the logs for details."
+                    exit 1
+                  else
+                    echo "✅ [SUCCESS] Documentation check completed successfully"
+                  fi
+                else
+                  echo "❌ [ERROR] Documentation check log file not found"
+                  exit 1
+                fi
+              else
+                echo "📋 [CONFIG] Working on root - skipping documentation check"
+                touch ../dbt_documentation_lint.log
+                echo "INFO: Working on root - skip" >> ../dbt_documentation_lint.log
+              fi
+            done < /workdir/changed_folders.txt
+
+            echo "==========================================="
+            echo "✅ [SUCCESS] DBT Project Documentation Review Complete"
+            echo "==========================================="
+            echo "🚀 [INFO] End of DBT Project documentation review procedure."
+        env:
+          - name: TARGET
+            value: test
+          - name: AIRFLOW_SECRET_FILE_NAME
+            valueFrom:
+              secretKeyRef:
+                name: fastbi-argo-workflows-secrets
+                key: AIRFLOW_SECRET_FILE_NAME
+          - name: DATA_WAREHOUSE_PLATFORM
+            valueFrom:
+              secretKeyRef:
+                name: fastbi-argo-workflows-secrets
+                key: DATA_WAREHOUSE_PLATFORM
+          - name: GCP_PROJECT_NAME
+            valueFrom:
+              secretKeyRef:
+                name: fastbi-argo-workflows-secrets
+                key: GCP_PROJECT_NAME
+          - name: GCP_SA_SECRET
+            valueFrom:
+              secretKeyRef:
+                name: fastbi-argo-workflows-secrets
+                key: GCP_SA_SECRET
+          # Redshift secrets
+          - name: REDSHIFT_HOST
+            valueFrom:
+              secretKeyRef:
+                name: fastbi-argo-workflows-secrets
+                key: REDSHIFT_HOST
+                optional: true
+          - name: REDSHIFT_DATABASE
+            valueFrom:
+              secretKeyRef:
+                name: fastbi-argo-workflows-secrets
+                key: REDSHIFT_DATABASE
+                optional: true
+          - name: REDSHIFT_PORT
+            valueFrom:
+              secretKeyRef:
+                name: fastbi-argo-workflows-secrets
+                key: REDSHIFT_PORT
+                optional: true
+          - name: REDSHIFT_USER
+            valueFrom:
+              secretKeyRef:
+                name: fastbi-argo-workflows-secrets
+                key: REDSHIFT_USER
+                optional: true
+          - name: REDSHIFT_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: fastbi-argo-workflows-secrets
+                key: REDSHIFT_PASSWORD
+                optional: true
+          # Snowflake secrets
+          - name: SNOWFLAKE_PRIVATE_KEY
+            valueFrom:
+              secretKeyRef:
+                name: fastbi-argo-workflows-secrets
+                key: SNOWFLAKE_PRIVATE_KEY
+                optional: true
+          - name: SNOWFLAKE_PASSPHRASE
+            valueFrom:
+              secretKeyRef:
+                name: fastbi-argo-workflows-secrets
+                key: SNOWFLAKE_PASSPHRASE
+                optional: true
+          # Fabric secrets
+          - name: FABRIC_SERVER
+            valueFrom:
+              secretKeyRef:
+                name: fastbi-argo-workflows-secrets
+                key: FABRIC_SERVER
+                optional: true
+          - name: FABRIC_DATABASE
+            valueFrom:
+              secretKeyRef:
+                name: fastbi-argo-workflows-secrets
+                key: FABRIC_DATABASE
+                optional: true
+          - name: FABRIC_PORT
+            valueFrom:
+              secretKeyRef:
+                name: fastbi-argo-workflows-secrets
+                key: FABRIC_PORT
+                optional: true
+          - name: FABRIC_USER
+            valueFrom:
+              secretKeyRef:
+                name: fastbi-argo-workflows-secrets
+                key: FABRIC_USER
+                optional: true
+          - name: FABRIC_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: fastbi-argo-workflows-secrets
+                key: FABRIC_PASSWORD
+                optional: true
+          - name: FABRIC_AUTHENTICATION
+            valueFrom:
+              secretKeyRef:
+                name: fastbi-argo-workflows-secrets
+                key: FABRIC_AUTHENTICATION
+                optional: true
+        resources: {}
+        volumeMounts:
+          - name: workdir
+            mountPath: /workdir
+          - name: gcp-sa-secret-file
+            mountPath: /secrets
+    - name: check-tests-completion
+      inputs:
+        parameters:
+          - name: branch
+      outputs: {}
+      metadata: {}
+      container:
+        name: ''
+        image: '{{workflow.parameters.docker_image_repository_hub}}/{{workflow.parameters.docker_image_repository}}/{{workflow.parameters.tsb_dbt_core_image_name}}:{{workflow.parameters.tsb_dbt_core_image_tag}}'
+        command:
+          - bash
+          - '-c'
+        args:
+          - |
+            #!/bin/bash
+
+
+            echo "==========================================="
+            echo "🚀 [INFO] DBT Project Tests Completion Check"
+            echo "==========================================="
+
+            echo "⚙️ [PROCESS] Starting DBT Project tests completion procedure on Branch: {{inputs.parameters.branch}}"
+            export GIT_BRANCH={{inputs.parameters.branch}}
+
+            cd /workdir/src
+
+            echo "🔍 [CHECK] Processing changed folders for testing..."
+
+            while read folder; do
+              if [ -d "$folder" ]; then
+                echo "==========================================="
+                echo "⚙️ [PROCESS] Running tests in folder: $folder"
+                echo "==========================================="
+                
+                cd "$folder"
+                
+                echo "📋 [CONFIG] Setting up warehouse credentials..."
+                
+                # BigQuery Configuration
+                if [[ "${DATA_WAREHOUSE_PLATFORM,,}" == "bigquery" ]]; then
+                  if [[ -z "$GCP_SA_SECRET" ]]; then
+                    echo "❌ [ERROR] Google BigQuery credentials are missing: Service Account JSON not provided"
+                    exit 1
+                  else
+                    if [[ -z "$GOOGLE_APPLICATION_CREDENTIALS" ]]; then
+                      echo "🔐 [CONFIG] Configuring BigQuery service account authentication"
+                      echo "$GCP_SA_SECRET" | base64 --decode > /secrets/sa.json
+                      gcloud auth activate-service-account --key-file /secrets/sa.json
+                      gcloud config set project $GCP_PROJECT_NAME
+                      export GOOGLE_APPLICATION_CREDENTIALS="/secrets/sa.json"
+                      echo "✅ [SUCCESS] BigQuery authentication configured"
+                    fi
+                  fi
+                fi
+                
+                # Snowflake Configuration
+                if [[ "${DATA_WAREHOUSE_PLATFORM,,}" == "snowflake" ]]; then
+                  if [[ -z "$SNOWFLAKE_PRIVATE_KEY" || -z "$SNOWFLAKE_PASSPHRASE" ]]; then
+                    echo "❌ [ERROR] Snowflake credentials are missing: Private Key and Passphrase not provided"
+                    exit 1
+                  else
+                    if [[ -z "$SNOWSQL_PRIVATE_KEY_PASSPHRASE" ]]; then
+                      echo "🔐 [CONFIG] Configuring Snowflake private key authentication"
+                      mkdir -p /snowsql/secrets/
+                      echo "$SNOWFLAKE_PRIVATE_KEY" > /snowsql/secrets/rsa_key.p8
+                      chmod 600 /snowsql/secrets/rsa_key.p8
+                      export SNOWSQL_PRIVATE_KEY_PASSPHRASE=$SNOWFLAKE_PASSPHRASE
+                      echo "✅ [SUCCESS] Snowflake authentication configured"
+                    fi
+                  fi
+                fi
+                
+                # Redshift Configuration
+                if [[ "${DATA_WAREHOUSE_PLATFORM,,}" == "redshift" ]]; then
+                  if [[ -z "$REDSHIFT_PASSWORD" || -z "$REDSHIFT_USER" || -z "$REDSHIFT_HOST" || -z "$REDSHIFT_DATABASE" || -z "$REDSHIFT_PORT" ]]; then
+                    echo "❌ [ERROR] Redshift credentials are missing: username and/or password not provided"
+                    exit 1
+                  else
+                    echo "✅ [SUCCESS] Redshift credentials validated"
+                  fi
+                fi
+                
+                # Fabric Configuration
+                if [[ "${DATA_WAREHOUSE_PLATFORM,,}" == "fabric" ]]; then
+                  if [[ -z "$FABRIC_SERVER" || -z "$FABRIC_DATABASE" || -z "$FABRIC_PORT" || -z "$FABRIC_USER" || -z "$FABRIC_PASSWORD" || -z "$FABRIC_AUTHENTICATION" ]]; then
+                    echo "❌ [ERROR] Fabric credentials are missing: one or more required parameters not provided"
+                    exit 1
+                  else
+                    echo "✅ [SUCCESS] Fabric credentials validated"
+                  fi
+                fi
+
+                echo "📋 [CONFIG] Loading test coverage threshold configuration"
+                export TEST_COVERAGE_THRESHOLD=$(grep 'TEST_COVERAGE_THRESHOLD:' "$AIRFLOW_SECRET_FILE_NAME" | tail -n1 | awk '{print $2}' | tr -d "'")
+                
+                if [ -z "$TEST_COVERAGE_THRESHOLD" ]; then
+                  export TEST_COVERAGE_THRESHOLD='0.9'
+                  echo "📋 [CONFIG] Using default test coverage threshold: 90%"
+                else
+                  echo "📋 [CONFIG] Test coverage threshold configured from secrets"
+                fi
+
+                echo "🔧 [PROCESS] Removing re_data package if present..."
+                
+                #Remove Package re_data:
+                remove_re_data_package() {
+                    local packages_file="${1:-packages.yml}"
+                    
+                    # Check if file exists
+                    if [[ ! -f "$packages_file" ]]; then
+                        echo "❌ [ERROR] File '$packages_file' not found" >&2
+                        return 1
+                    fi
+                    
+                    # Check if re-data/re_data exists in the file
+                    if grep -q "package: re-data/re_data" "$packages_file"; then
+                        echo "🔧 [PROCESS] Found re-data/re_data package, removing it..."
+                        
+                        # Create a temporary file
+                        local temp_file=$(mktemp)
+                        
+                        # Use yq to remove the package entry
+                        yq 'del(.packages[] | select(.package == "re-data/re_data"))' "$packages_file" > "$temp_file"
+                        
+                        # Check if yq command succeeded
+                        if [[ $? -ne 0 ]]; then
+                            echo "❌ [ERROR] Failed to process YAML with yq" >&2
+                            rm -f "$temp_file"
+                            return 1
+                        fi
+                        
+                        # Replace original file with the modified version
+                        mv "$temp_file" "$packages_file"
+                        
+                        echo "✅ [SUCCESS] Successfully removed re-data/re_data package from $packages_file"
+
+                        # Force recompilation by removing manifest
+                        echo "🔧 [PROCESS] Cleaning DBT cache for recompilation"
+                        dbt clean --quiet 2>&1
+
+                        return 0
+                    else
+                        echo "📋 [CONFIG] Package re-data/re_data not found in $packages_file"
+                        return 0
+                    fi
+                }
+
+                # Remove macro for Table Sample set_data_tablesample.sql
+                remove_set_data_tablesample_macro() {
+                    root_macro_folder="./macros"
+                    local macro_file="set_data_tablesample.sql"
+                    if [ -f "$root_macro_folder/$macro_file" ]; then
+                        echo "⚙️ [PROCESS] Found set_data_tablesample.sql macro, removing it..."
+                        rm -f "$root_macro_folder/$macro_file"
+                        echo "✅ [SUCCESS] Successfully removed set_data_tablesample.sql macro"
+                    else
+                        echo "📋 [CONFIG] set_data_tablesample.sql macro not found in $root_macro_folder"
+                        return 0
+                    fi
+                }
+
+                remove_set_data_tablesample_macro
+
+                remove_re_data_package
+
+                echo "⚙️ [PROCESS] Installing DBT dependencies..."
+                dbt deps --quiet 2>&1
+                
+                echo "⚙️ [PROCESS] Building DBT models for testing..."
+                dbt build --target ${TARGET} --empty --quiet 2>&1
+                
+                echo "⚙️ [PROCESS] Generating DBT documentation..."
+                dbt docs generate --target ${TARGET} --quiet 2>&1
+
+                echo "🔍 [CHECK] Running DBT test completion validation..."
+                # Run the documentation check and display output in real-time
+                python /usr/app/dbt/dbt_lint/check_dbt_test.py 2>&1 | tee /dev/tty
+                doc_check_exit_code=${PIPESTATUS[0]}
+
+                echo "📋 [CONFIG] Copying test completion log for error checking"
+                # Copy the log file to the parent directory for error checking
+                if [ -f "dbt_tests_completion.log" ]; then
+                  cp dbt_tests_completion.log ../dbt_tests_completion_lint.log
+                  echo "✅ [SUCCESS] Test completion log copied"
+                else
+                  echo "⚠️ [WARNING] Test completion log file not found"
+                fi
+
+                cd ..
+
+                echo "🔍 [CHECK] Validating test completion results..."
+                # Check for errors in the log file
+                if [ -f "dbt_tests_completion_lint.log" ]; then
+                  if grep -q "^ERROR:" dbt_tests_completion_lint.log || [ $doc_check_exit_code -ne 0 ]; then
+                    echo "❌ [ERROR] Tests completion check failed. Check the logs for details."
+                    exit 1
+                  else
+                    echo "✅ [SUCCESS] Tests completion check passed for folder: $folder"
+                  fi
+                else
+                  echo "❌ [ERROR] Tests completion check log file not found"
+                  exit 1
+                fi
+              else
+                echo "📋 [CONFIG] Working on root directory - skipping tests"
+                touch ../dbt_tests_completion_lint.log
+                echo "INFO: Working on root - skip" >> ../dbt_tests_completion_lint.log
+              fi
+            done < /workdir/changed_folders.txt
+
+            echo "==========================================="
+            echo "✅ [SUCCESS] DBT Project tests completion procedure completed successfully"
+            echo "==========================================="
+        env:
+          - name: TARGET
+            value: test
+          - name: AIRFLOW_SECRET_FILE_NAME
+            valueFrom:
+              secretKeyRef:
+                name: fastbi-argo-workflows-secrets
+                key: AIRFLOW_SECRET_FILE_NAME
+          - name: DATA_WAREHOUSE_PLATFORM
+            valueFrom:
+              secretKeyRef:
+                name: fastbi-argo-workflows-secrets
+                key: DATA_WAREHOUSE_PLATFORM
+          - name: GCP_PROJECT_NAME
+            valueFrom:
+              secretKeyRef:
+                name: fastbi-argo-workflows-secrets
+                key: GCP_PROJECT_NAME
+          - name: GCP_SA_SECRET
+            valueFrom:
+              secretKeyRef:
+                name: fastbi-argo-workflows-secrets
+                key: GCP_SA_SECRET
+          # Redshift secrets
+          - name: REDSHIFT_HOST
+            valueFrom:
+              secretKeyRef:
+                name: fastbi-argo-workflows-secrets
+                key: REDSHIFT_HOST
+                optional: true
+          - name: REDSHIFT_DATABASE
+            valueFrom:
+              secretKeyRef:
+                name: fastbi-argo-workflows-secrets
+                key: REDSHIFT_DATABASE
+                optional: true
+          - name: REDSHIFT_PORT
+            valueFrom:
+              secretKeyRef:
+                name: fastbi-argo-workflows-secrets
+                key: REDSHIFT_PORT
+                optional: true
+          - name: REDSHIFT_USER
+            valueFrom:
+              secretKeyRef:
+                name: fastbi-argo-workflows-secrets
+                key: REDSHIFT_USER
+                optional: true
+          - name: REDSHIFT_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: fastbi-argo-workflows-secrets
+                key: REDSHIFT_PASSWORD
+                optional: true
+          # Snowflake secrets
+          - name: SNOWFLAKE_PRIVATE_KEY
+            valueFrom:
+              secretKeyRef:
+                name: fastbi-argo-workflows-secrets
+                key: SNOWFLAKE_PRIVATE_KEY
+                optional: true
+          - name: SNOWFLAKE_PASSPHRASE
+            valueFrom:
+              secretKeyRef:
+                name: fastbi-argo-workflows-secrets
+                key: SNOWFLAKE_PASSPHRASE
+                optional: true
+          # Fabric secrets
+          - name: FABRIC_SERVER
+            valueFrom:
+              secretKeyRef:
+                name: fastbi-argo-workflows-secrets
+                key: FABRIC_SERVER
+                optional: true
+          - name: FABRIC_DATABASE
+            valueFrom:
+              secretKeyRef:
+                name: fastbi-argo-workflows-secrets
+                key: FABRIC_DATABASE
+                optional: true
+          - name: FABRIC_PORT
+            valueFrom:
+              secretKeyRef:
+                name: fastbi-argo-workflows-secrets
+                key: FABRIC_PORT
+                optional: true
+          - name: FABRIC_USER
+            valueFrom:
+              secretKeyRef:
+                name: fastbi-argo-workflows-secrets
+                key: FABRIC_USER
+                optional: true
+          - name: FABRIC_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: fastbi-argo-workflows-secrets
+                key: FABRIC_PASSWORD
+                optional: true
+          - name: FABRIC_AUTHENTICATION
+            valueFrom:
+              secretKeyRef:
+                name: fastbi-argo-workflows-secrets
+                key: FABRIC_AUTHENTICATION
+                optional: true
+        resources: {}
+        volumeMounts:
+          - name: workdir
+            mountPath: /workdir
+          - name: gcp-sa-secret-file
+            mountPath: /secrets
+    - name: validating-da-dependencies
+      inputs:
+        parameters:
+          - name: branch
+          - name: commit_short_sha
+      outputs: {}
+      metadata: {}
+      container:
+        name: ''
+        image: '{{workflow.parameters.docker_image_repository_hub}}/{{workflow.parameters.docker_image_repository}}/{{workflow.parameters.data_analysis_import_core_image_name}}:{{workflow.parameters.data_analysis_import_core_image_tag}}'
+        command:
+          - bash
+          - '-c'
+        args:
+          - |
+            #!/bin/bash
+
+
+            echo "==========================================="
+            echo "🚀 [INFO] Data Analysis Dependencies Validation"
+            echo "📋 [CONFIG] Branch: {{inputs.parameters.branch}}"
+            echo "==========================================="
+
+            echo "⚙️ [PROCESS] Starting Data Analysis dependencies validation on Branch: {{inputs.parameters.branch}}"
+
+            cd /workdir/src
+
+            while read folder; do
+              if [ -d "$folder" ]; then
+                echo "==========================================="
+                echo "🔍 [CHECK] Validating Data Analysis dependencies in $folder"
+                echo "==========================================="
+                
+                cd "$folder"
+                
+                # ===========================================
+                # 🔐 [CONFIG] Warehouse Credentials Setup
+                # ===========================================
+                
+                if [[ "${DATA_WAREHOUSE_PLATFORM,,}" == "bigquery" ]]; then
+                  echo "📋 [CONFIG] Configuring BigQuery credentials"
+                  if [[ -z "$GCP_SA_SECRET" ]]; then
+                    echo "❌ [ERROR] Google Bigquery credentials are missing: Service Account JSON not provided"
+                    exit 1
+                  else
+                    if [[ -z "$GOOGLE_APPLICATION_CREDENTIALS" ]]; then
+                      echo "⚙️ [PROCESS] Setting up BigQuery authentication"
+                      echo "$GCP_SA_SECRET" | base64 --decode > /secrets/sa.json
+                      gcloud auth activate-service-account --key-file /secrets/sa.json
+                      gcloud config set project $GCP_PROJECT_NAME
+                      export GOOGLE_APPLICATION_CREDENTIALS="/secrets/sa.json"
+                      echo "✅ [SUCCESS] BigQuery authentication configured"
+                    fi
+                  fi
+                fi
+                
+                if [[ "${DATA_WAREHOUSE_PLATFORM,,}" == "snowflake" ]]; then
+                  echo "📋 [CONFIG] Configuring Snowflake credentials"
+                  if [[ -z "$SNOWFLAKE_PRIVATE_KEY" || -z "$SNOWFLAKE_PASSPHRASE" ]]; then
+                    echo "❌ [ERROR] Snowflake credentials are missing: Private Key and Passphrase not provided"
+                    exit 1
+                  else
+                    if [[ -z "$SNOWSQL_PRIVATE_KEY_PASSPHRASE" ]]; then
+                      echo "⚙️ [PROCESS] Setting up Snowflake authentication"
+                      mkdir -p /snowsql/secrets/
+                      echo "$SNOWFLAKE_PRIVATE_KEY" > /snowsql/secrets/rsa_key.p8
+                      chmod 600 /snowsql/secrets/rsa_key.p8
+                      export SNOWSQL_PRIVATE_KEY_PASSPHRASE=$SNOWFLAKE_PASSPHRASE
+                      echo "✅ [SUCCESS] Snowflake authentication configured"
+                    fi
+                  fi
+                fi
+                
+                if [[ "${DATA_WAREHOUSE_PLATFORM,,}" == "redshift" ]]; then
+                  echo "📋 [CONFIG] Configuring Redshift credentials"
+                  if [[ -z "$REDSHIFT_PASSWORD" || -z "$REDSHIFT_USER" || -z "$REDSHIFT_HOST" || -z "$REDSHIFT_DATABASE" || -z "$REDSHIFT_PORT" ]]; then
+                    echo "❌ [ERROR] Redshift credentials are missing: username and/or password not provided"
+                    exit 1
+                  else
+                    echo "✅ [SUCCESS] Redshift credentials validated"
+                  fi
+                fi
+                
+                if [[ "${DATA_WAREHOUSE_PLATFORM,,}" == "fabric" ]]; then
+                  echo "📋 [CONFIG] Configuring Fabric credentials"
+                  if [[ -z "$FABRIC_SERVER" || -z "$FABRIC_DATABASE" || -z "$FABRIC_PORT" || -z "$FABRIC_USER" || -z "$FABRIC_PASSWORD" || -z "$FABRIC_AUTHENTICATION" ]]; then
+                    echo "❌ [ERROR] Fabric credentials are missing: one or more required parameters not provided"
+                    exit 1
+                  else
+                    echo "✅ [SUCCESS] Fabric credentials validated"
+                  fi
+                fi
+
+                # ===========================================
+                # 🔍 [CHECK] Data Analysis Platform Validation
+                # ===========================================
+                
+                echo "🔍 [CHECK] Starting BI Model dbt metadata validation"
+                echo "🔍 [CHECK] Validating Data Analysis platform configuration"
+                
+                if [[ -z $DATA_ANALYSIS_PLATFORM ]]; then
+                  echo "⚠️ [WARNING] DATA_ANALYSIS_PLATFORM is not defined, skipping validation"
+                else
+                  echo "✅ [SUCCESS] DATA_ANALYSIS_PLATFORM is configured: ${DATA_ANALYSIS_PLATFORM}"
+                  
+                  if [[ "${DATA_ANALYSIS_PLATFORM,,}" == "lightdash" ]]; then
+                    echo "==========================================="
+                    echo "🔍 [CHECK] Lightdash Platform Validation"
+                    echo "==========================================="
+                    
+                    echo "📋 [CONFIG] Validating Lightdash configuration parameters"
+                    if [[ -z ${LIGHTDASH_API_KEY} || -z ${LIGHTDASH_URL} ]]; then
+                      echo "❌ [ERROR] Lightdash configuration incomplete: API key or URL missing"
+                      exit 1
+                    else
+                      echo "✅ [SUCCESS] Lightdash configuration validated"
+                      
+                      echo "⚙️ [PROCESS] Cleaning Jinja code patterns from profiles.yml"
+                      profile_path='profiles.yml'
+                      pattern="{{[^}]*}}"
+                      if grep -E "$pattern" "$profile_path"; then
+                        echo "🔍 [CHECK] Jinja code found in $profile_path, removing..."
+                        sed -i.bak "s/$pattern//g" "$profile_path" && rm "$profile_path.bak"
+                        echo "✅ [SUCCESS] Jinja code removed from $profile_path"
+                      else
+                        echo "✅ [SUCCESS] No Jinja code found in $profile_path"
+                      fi
+                      
+                      echo "⚙️ [PROCESS] Authenticating to Lightdash"
+                      echo -ne '\n' | lightdash login "${LIGHTDASH_URL}" --token "${LIGHTDASH_API_KEY}"
+                      echo "✅ [SUCCESS] Lightdash authentication completed"
+                      
+                      echo "⚙️ [PROCESS] Importing variables from Airflow secret configuration"
+                      export DBT_PROJECT_NAME=$(grep 'DBT_PROJECT_NAME:' "$AIRFLOW_SECRET_FILE_NAME" | tail -n1 | awk '{print $2}' | tr -d "'")
+                      export DATA_ANALYSIS_PROJECT=$(grep 'DATA_ANALYSIS_PROJECT:' "$AIRFLOW_SECRET_FILE_NAME" | tail -n1 | awk '{print $2}' | tr -d "'")
+                      echo "✅ [SUCCESS] Configuration variables imported"
+                      
+                      echo "⚙️ [PROCESS] Downloading dbt packages"
+                      dbt deps --quiet
+                      echo "✅ [SUCCESS] dbt packages downloaded"
+                      
+                      echo "🔍 [CHECK] Starting dbt metadata validation"
+                      if [[ -z "${DATA_ANALYSIS_PROJECT}" || "${DATA_ANALYSIS_PROJECT}" == "false" || "${DATA_ANALYSIS_PROJECT}" == "False" ]]; then
+                        echo "⚠️ [WARNING] Lightdash metadata validation is disabled, skipping..."
+                      else
+                        if [[ "${DATA_ANALYSIS_PROJECT}" == "true" || "${DATA_ANALYSIS_PROJECT}" == "True" || -z "${DATA_ANALYSIS_PROJECT}" ]]; then
+                          echo "⚙️ [PROCESS] Running temporary Lightdash preview project for metadata validation"
+                          unset DATA_ANALYSIS_PROJECT
+                          unset LIGHTDASH_PROJECT
+                          
+                          # Define the configuration file path
+                          config_file=~/.config/lightdash/config.yaml
+                          touch "$config_file"
+                          
+                          # Check if the configuration file already exists
+                          if [ -f "$config_file" ]; then
+                            echo "⚙️ [PROCESS] Configuring Lightdash answers section"
+                            # Use yq to add the answers section with key-value pairs
+                            yq eval -i '.answers = {"permissionToStoreWarehouseCredentials": true}' "$config_file"
+                            echo "✅ [SUCCESS] Lightdash configuration updated"
+                          else
+                            echo "⚠️ [WARNING] Configuration file $config_file does not exist"
+                          fi
+                          
+                          echo "⚙️ [PROCESS] Starting temporary LightDash project for dbt metadata validation"
+                          DATA_ANALYSIS_PROJECT_NAME=${DBT_PROJECT_NAME}_{{inputs.parameters.branch}}
+                          echo -ne '\n' | lightdash start-preview --name "${DATA_ANALYSIS_PROJECT_NAME}" --profiles-dir . --exclude package:re_data --no-version-check 2>&1 | tee -a ../dbt_project_meta_lint.log
+                          lightdash stop-preview --name "${DATA_ANALYSIS_PROJECT_NAME}"
+                          echo "✅ [SUCCESS] Temporary Lightdash project validation completed"
+                        else
+                          echo "⚙️ [PROCESS] Running LightDash project validation for updated dbt metadata"
+                          export LIGHTDASH_PROJECT=${DATA_ANALYSIS_PROJECT}
+                          lightdash validate --profiles-dir . --exclude package:re_data 2>&1 | tee -a ../dbt_project_meta_lint.log
+                          echo "✅ [SUCCESS] Lightdash project validation completed"
+                        fi
+                      fi
+                    fi
+                    
+                  elif [[ "${DATA_ANALYSIS_PLATFORM,,}" == "superset" ]]; then
+                    echo "==========================================="
+                    echo "🔍 [CHECK] Superset Platform Validation"
+                    echo "==========================================="
+                    echo "📋 [CONFIG] Superset platform detected"
+                    echo "⚠️ [WARNING] Superset validation is only performed during merge/pull request stage"
+                    echo "ℹ️ [INFO] Branch validation will be skipped. Your changes will be validated when you create a merge/pull request"
+                    
+                  elif [[ "${DATA_ANALYSIS_PLATFORM,,}" == "metabase" ]]; then
+                    echo "==========================================="
+                    echo "🔍 [CHECK] Metabase Platform Validation"
+                    echo "==========================================="
+                    echo "📋 [CONFIG] Metabase platform detected"
+                    echo "⚠️ [WARNING] Metabase validation is only available during merge/pull request stage"
+                    echo "ℹ️ [INFO] Branch validation will be skipped. Your changes will be validated when you create a merge/pull request"
+                    
+                  elif [[ "${DATA_ANALYSIS_PLATFORM,,}" == "looker" ]]; then
+                    echo "==========================================="
+                    echo "🔍 [CHECK] Google Looker Enterprise Platform Validation"
+                    echo "==========================================="
+                    echo "📋 [CONFIG] Google Looker Enterprise platform detected"
+                    echo "⚠️ [WARNING] Looker validation is only available during merge/pull request stage"
+                    echo "ℹ️ [INFO] Branch validation will be skipped. Your changes will be validated when you create a merge/pull request"
+                  fi
+                fi
+                
+                cd ..
+              else
+                echo "ℹ️ [INFO] Working on root directory - skipping validation"
+              fi
+            done < /workdir/changed_folders.txt
+
+            echo "==========================================="
+            echo "✅ [SUCCESS] Data Analysis dependencies validation completed"
+            echo "==========================================="
+        env:
+          - name: DATA_WAREHOUSE_PLATFORM
+            valueFrom:
+              secretKeyRef:
+                name: fastbi-argo-workflows-secrets
+                key: DATA_WAREHOUSE_PLATFORM
+          - name: GCP_PROJECT_NAME
+            valueFrom:
+              secretKeyRef:
+                name: fastbi-argo-workflows-secrets
+                key: GCP_PROJECT_NAME
+          - name: GCP_SA_SECRET
+            valueFrom:
+              secretKeyRef:
+                name: fastbi-argo-workflows-secrets
+                key: GCP_DATA_ANALYSIS_SA_SECRET
+          - name: GCP_DATA_ANALYSIS_SA_SECRET
+            valueFrom:
+              secretKeyRef:
+                name: fastbi-argo-workflows-secrets
+                key: GCP_DATA_ANALYSIS_SA_SECRET
+          - name: DATA_ANALYSIS_PLATFORM
+            valueFrom:
+              secretKeyRef:
+                name: fastbi-argo-workflows-secrets
+                key: DATA_ANALYSIS_PLATFORM
+          - name: AIRFLOW_SECRET_FILE_NAME
+            valueFrom:
+              secretKeyRef:
+                name: fastbi-argo-workflows-secrets
+                key: AIRFLOW_SECRET_FILE_NAME
+          - name: LIGHTDASH_API_KEY
+            valueFrom:
+              secretKeyRef:
+                name: fastbi-argo-workflows-secrets
+                key: LIGHTDASH_API_KEY
+                optional: true
+          - name: LIGHTDASH_URL
+            valueFrom:
+              secretKeyRef:
+                name: fastbi-argo-workflows-secrets
+                key: LIGHTDASH_URL
+                optional: true
+          - name: SUPERSET_BASE_URL
+            valueFrom:
+              secretKeyRef:
+                name: fastbi-argo-workflows-secrets
+                key: SUPERSET_BASE_URL
+                optional: true
+          - name: SUPERSET_USER
+            valueFrom:
+              secretKeyRef:
+                name: fastbi-argo-workflows-secrets
+                key: SUPERSET_USER
+                optional: true
+          - name: SUPERSET_USER_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: fastbi-argo-workflows-secrets
+                key: SUPERSET_USER_PASSWORD
+                optional: true
+          - name: METABASE_URL
+            valueFrom:
+              secretKeyRef:
+                name: fastbi-argo-workflows-secrets
+                key: METABASE_URL
+                optional: true
+          - name: METABASE_API_KEY
+            valueFrom:
+              secretKeyRef:
+                name: fastbi-argo-workflows-secrets
+                key: METABASE_API_KEY
+                optional: true
+          - name: LOOKERSDK_BASE_URL
+            valueFrom:
+              secretKeyRef:
+                name: fastbi-argo-workflows-secrets
+                key: LOOKERSDK_BASE_URL
+                optional: true
+          - name: LOOKERSDK_CLIENT_ID
+            valueFrom:
+              secretKeyRef:
+                name: fastbi-argo-workflows-secrets
+                key: LOOKERSDK_CLIENT_ID
+                optional: true
+          - name: LOOKERSDK_CLIENT_SECRET
+            valueFrom:
+              secretKeyRef:
+                name: fastbi-argo-workflows-secrets
+                key: LOOKERSDK_CLIENT_SECRET
+                optional: true
+          - name: LOOKER_REPO_TOKEN_NAME
+            valueFrom:
+              secretKeyRef:
+                name: fastbi-argo-workflows-secrets
+                key: LOOKER_REPO_TOKEN_NAME
+                optional: true
+          - name: LOOKER_REPO_ACCESS_TOKEN
+            valueFrom:
+              secretKeyRef:
+                name: fastbi-argo-workflows-secrets
+                key: LOOKER_REPO_ACCESS_TOKEN
+                optional: true
+          # Redshift secrets
+          - name: REDSHIFT_HOST
+            valueFrom:
+              secretKeyRef:
+                name: fastbi-argo-workflows-secrets
+                key: REDSHIFT_HOST
+                optional: true
+          - name: REDSHIFT_DATABASE
+            valueFrom:
+              secretKeyRef:
+                name: fastbi-argo-workflows-secrets
+                key: REDSHIFT_DATABASE
+                optional: true
+          - name: REDSHIFT_PORT
+            valueFrom:
+              secretKeyRef:
+                name: fastbi-argo-workflows-secrets
+                key: REDSHIFT_PORT
+                optional: true
+          - name: REDSHIFT_USER
+            valueFrom:
+              secretKeyRef:
+                name: fastbi-argo-workflows-secrets
+                key: REDSHIFT_USER
+                optional: true
+          - name: REDSHIFT_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: fastbi-argo-workflows-secrets
+                key: REDSHIFT_PASSWORD
+                optional: true
+          # Snowflake secrets
+          - name: SNOWFLAKE_PRIVATE_KEY
+            valueFrom:
+              secretKeyRef:
+                name: fastbi-argo-workflows-secrets
+                key: SNOWFLAKE_PRIVATE_KEY
+                optional: true
+          - name: SNOWFLAKE_PASSPHRASE
+            valueFrom:
+              secretKeyRef:
+                name: fastbi-argo-workflows-secrets
+                key: SNOWFLAKE_PASSPHRASE
+                optional: true
+          # Fabric secrets
+          - name: FABRIC_SERVER
+            valueFrom:
+              secretKeyRef:
+                name: fastbi-argo-workflows-secrets
+                key: FABRIC_SERVER
+                optional: true
+          - name: FABRIC_DATABASE
+            valueFrom:
+              secretKeyRef:
+                name: fastbi-argo-workflows-secrets
+                key: FABRIC_DATABASE
+                optional: true
+          - name: FABRIC_PORT
+            valueFrom:
+              secretKeyRef:
+                name: fastbi-argo-workflows-secrets
+                key: FABRIC_PORT
+                optional: true
+          - name: FABRIC_USER
+            valueFrom:
+              secretKeyRef:
+                name: fastbi-argo-workflows-secrets
+                key: FABRIC_USER
+                optional: true
+          - name: FABRIC_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: fastbi-argo-workflows-secrets
+                key: FABRIC_PASSWORD
+                optional: true
+          - name: FABRIC_AUTHENTICATION
+            valueFrom:
+              secretKeyRef:
+                name: fastbi-argo-workflows-secrets
+                key: FABRIC_AUTHENTICATION
+                optional: true
+        resources: {}
+        volumeMounts:
+          - name: workdir
+            mountPath: /workdir
+          - name: gcp-sa-secret-file
+            mountPath: /secrets
+    - name: k8s-pvc-cleanup
+      inputs: {}
+      outputs: {}
+      metadata: {}
+      container:
+        name: ''
+        image: bitnami/kubectl
+        command:
+          - bash
+          - '-c'
+        args:
+          - |
+            #!/bin/bash
+
+            # ===========================================
+            # Kubernetes PVC Cleanup Script
+            # ===========================================
+            # Purpose: Clean up Persistent Volume Claims
+            #          for Argo Workflows in cicd-workflows namespace
+            # ===========================================
+
+
+
+            echo "🚀 [INFO] Starting Kubernetes PVC cleanup process"
+            echo "=========================================="
+
+            # Configuration
+            PVC_NAME="{{workflow.name}}-workdir"
+            NAMESPACE="cicd-workflows"
+
+            echo "📋 [CONFIG] PVC Name: $PVC_NAME"
+            echo "📋 [CONFIG] Target Namespace: $NAMESPACE"
+            echo ""
+
+            echo "⚙️ [PROCESS] Attempting to delete PVC $PVC_NAME in namespace $NAMESPACE..."
+
+            # Execute the PVC deletion command (keeping exact same logic)
+            kubectl delete pvc $PVC_NAME --namespace $NAMESPACE --ignore-not-found 2>/dev/null
+
+            # Check the result and provide appropriate feedback
+            if [ $? -eq 0 ]; then
+              echo "✅ [SUCCESS] Successfully deleted PVC $PVC_NAME or it did not exist"
+            else
+              echo "❌ [ERROR] Failed to delete PVC $PVC_NAME. Check logs for details"
+              exit 1
+            fi
+
+            echo ""
+            echo "✅ [SUCCESS] Kubernetes PVC cleanup process completed"
+            echo "=========================================="
+        resources: {}
+    - name: check-task-status
+      inputs:
+        parameters:
+          - name: workflow_status
+          - name: argo_main_address
+      script:
+        image: alpine
+        command:
+          - sh
+          - '-c'
+        args:
+          - |
+            #!/bin/sh
+
+            # ===========================================
+            # Argo Workflow Task Status Checker
+            # ===========================================
+
+
+
+            echo "🚀 [INFO] Starting Argo Workflow Task Status Check"
+            echo "=========================================="
+
+            # ===========================================
+            # Dependencies Installation
+            # ===========================================
+
+            echo "⚙️ [PROCESS] Installing required dependencies..."
+            apk add --no-cache jq >/dev/null 2>&1 || { 
+              echo "❌ [ERROR] Failed to install jq dependency"
+              exit 1
+            }
+            echo "✅ [SUCCESS] Dependencies installed successfully"
+
+            # ===========================================
+            # Workflow Status Processing
+            # ===========================================
+
+            echo "🔍 [CHECK] Parsing workflow failure information..."
+            workflow_status_output='{{inputs.parameters.workflow_status}}'
+
+            # Validate workflow status input
+            if [ -z "$workflow_status_output" ] || [ "$workflow_status_output" = "null" ]; then
+              echo "✅ [SUCCESS] No failure information available - All tasks completed successfully"
+              echo "=========================================="
+              echo "🎉 [COMPLETE] Task status check completed successfully"
+              exit 0
+            fi
+
+            # ===========================================
+            # Argo Workflow URL Generation
+            # ===========================================
+
+            echo "📋 [CONFIG] Generating Argo Workflow URL..."
+            ARGO_URL=$(echo "{{inputs.parameters.argo_main_address}}" | sed 's/:443//')
+            echo "🔗 [INFO] Argo Workflow URL:"
+            echo "https://${ARGO_URL}/workflows/cicd-workflows/{{workflow.name}}?tab=workflow&uid={{workflow.uid}}"
+
+            # ===========================================
+            # Failure Analysis
+            # ===========================================
+
+            echo "🔍 [CHECK] Analyzing task execution results..."
+            failed_tasks=$(echo "$workflow_status_output" | jq -r 'fromjson | .[] | select(.phase == "Failed") | "Task: \(.displayName)\nStatus: \(.phase)\nMessage: \(.message)\nFinished at: \(.finishedAt)\n"')
+
+            if [ -n "$failed_tasks" ]; then
+              echo "❌ [ERROR] Failed tasks detected:"
+              echo "------------------------------------------"
+              echo "$failed_tasks"
+              echo "------------------------------------------"
+              
+              failure_count=$(echo "$workflow_status_output" | jq 'fromjson | [ .[] | select(.phase == "Failed") ] | length')
+              echo "❌ [ERROR] Pipeline failed due to $failure_count failure(s)"
+              echo "=========================================="
+              echo "💥 [FAILED] Task status check completed with failures"
+              exit 1
+            else
+              echo "✅ [SUCCESS] No failures detected - All tasks completed successfully"
+              echo "=========================================="
+              echo "🎉 [COMPLETE] Task status check completed successfully"
+              exit 0
+            fi
+        resources: {}
+  entrypoint: main
+  arguments:
+    parameters:
+      - name: storage_class
+        value: "standard"
+      - name: docker_image_repository_hub
+        value: europe-central2-docker.pkg.dev
+      - name: docker_image_repository
+        value: fast-bi-common/bi-platform
+      - name: check_on_branch
+        value: "false"  # default value
+#fast.bi CICD Pipeline Images
+      - name: tsb_dbt_core_image_name
+        value: tsb-dbt-core
+      - name: tsb_dbt_core_image_tag
+        value: v1.9.2.1
+      - name: data_analysis_import_core_image_name
+        value: tsb-data-analysis-import-core
+      - name: data_analysis_import_core_image_tag
+        value: v0.1.2
+      - name: tsb_sqlfluff_core_image_name
+        value: tsb-sqlfluff-core
+      - name: tsb_sqlfluff_core_image_tag
+        value: v3.4.0
+      - name: repo_url
+      - name: revision
+      - name: branch
+      - name: commit_short_sha
+      - name: git_username
+        value: oauth2
+      - name: git_token
+  volumes:
+    - name: fastbi-argo-workflows-secrets
+      secret:
+        secretName: fastbi-argo-workflows-secrets
+    - name: gcp-sa-secret-file
+      emptyDir: {}
+  volumeClaimTemplates:
+    - metadata:
+        name: workdir
+        creationTimestamp: null
+      spec:
+        accessModes:
+          - ReadWriteOnce
+        resources:
+          requests:
+            storage: 1Gi
+        storageClassName: "{{workflow.parameters.storage_class}}"
+      status: {}
+  onExit: exit-handler
+  ttlStrategy:
+    secondsAfterCompletion: 86400
+  activeDeadlineSeconds: 7200
+  podGC:
+    strategy: OnPodCompletion
+  podSpecPatch: |
+    containers:
+      - name: main
+        imagePullPolicy: Always
+        env:
+          - name: PYTHONWARNINGS
+            value: "ignore"

@@ -1,0 +1,7 @@
+package-lock.yml
+target/
+dbt_packages/
+logs/
+.vscode/
+.dbt/
+test_localy.sh
