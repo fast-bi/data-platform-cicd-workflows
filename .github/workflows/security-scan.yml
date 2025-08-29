@@ -13,7 +13,6 @@ on:
 permissions:
   contents: read
   pull-requests: write
-  security-events: write
   actions: read
 
 jobs:
@@ -67,17 +66,11 @@ jobs:
       - name: Check if SARIF file exists
         run: |
           if [ -f "semgrep-results.sarif" ]; then
-            echo "SARIF file found, will upload to GitHub Security tab"
+            echo "SARIF file found with security findings"
           else
             echo "No SARIF file generated, creating empty one"
             echo '{"version": "2.1.0", "$schema": "https://json.schemastore.org/sarif-2.1.0-rtm.5.json", "runs": []}' > semgrep-results.sarif
           fi
-
-      - name: Upload Semgrep scan results to GitHub Security tab
-        uses: github/codeql-action/upload-sarif@v3
-        if: always()
-        with:
-          sarif_file: 'semgrep-results.sarif'
 
       - name: Comment PR with Semgrep results
         if: github.event_name == 'pull_request'
@@ -86,7 +79,7 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
             const fs = require('fs');
-            let comment = '🔍 **Semgrep Static Analysis Results**\n\n';
+            let comment = '🔍 **Semgrep Security Scan Results**\n\n';
             
             try {
               if (fs.existsSync('semgrep-results.sarif')) {
@@ -103,32 +96,44 @@ jobs:
                   comment += '- Kubernetes security issues\n';
                   comment += '- Docker security best practices';
                 } else {
-                  const criticalHigh = results.filter(r => r.level === 'error' || r.level === 'warning');
-                  const info = results.filter(r => r.level === 'note');
+                  comment += `⚠️ **Found ${results.length} security issues**\n\n`;
                   
-                  comment += `⚠️ **Found ${results.length} code quality/security issues**\n\n`;
-                  
-                  if (criticalHigh.length > 0) {
-                    comment += `**Critical/High Priority (${criticalHigh.length}):**\n`;
-                    criticalHigh.slice(0, 5).forEach((result, index) => {
-                      const rule = result.rule?.id || 'Unknown';
-                      const message = result.message?.text || 'No description';
-                      const location = result.locations?.[0]?.physicalLocation?.artifactLocation?.uri || 'Unknown file';
-                      comment += `${index + 1}. **${rule}** in \`${location}\`\n`;
-                      comment += `   ${message}\n\n`;
-                    });
+                  // Group findings by file
+                  const findingsByFile = {};
+                  results.forEach(result => {
+                    const file = result.locations?.[0]?.physicalLocation?.artifactLocation?.uri || 'Unknown file';
+                    const line = result.locations?.[0]?.physicalLocation?.region?.startLine || 'Unknown line';
+                    const rule = result.rule?.id || 'Unknown rule';
+                    const message = result.message?.text || 'No description';
                     
-                    if (criticalHigh.length > 5) {
-                      comment += `... and ${criticalHigh.length - 5} more critical/high issues\n\n`;
+                    if (!findingsByFile[file]) {
+                      findingsByFile[file] = [];
                     }
+                    findingsByFile[file].push({ line, rule, message });
+                  });
+                  
+                  // Show findings by file
+                  Object.keys(findingsByFile).slice(0, 5).forEach(file => {
+                    comment += `**📁 ${file}**\n`;
+                    findingsByFile[file].slice(0, 3).forEach(finding => {
+                      comment += `• Line ${finding.line}: **${finding.rule}**\n`;
+                      comment += `  ${finding.message}\n\n`;
+                    });
+                    if (findingsByFile[file].length > 3) {
+                      comment += `  ... and ${findingsByFile[file].length - 3} more issues\n\n`;
+                    }
+                  });
+                  
+                  if (Object.keys(findingsByFile).length > 5) {
+                    comment += `**... and ${Object.keys(findingsByFile).length - 5} more files with issues**\n\n`;
                   }
                   
-                  if (info.length > 0) {
-                    comment += `**Info/Suggestions (${info.length}):**\n`;
-                    comment += `${info.length} additional code quality suggestions found.\n\n`;
-                  }
-                  
-                  comment += '🔗 View full results in the [Security tab](https://github.com/${{ github.repository }}/security/code-scanning)';
+                  comment += '💡 **Recommendations:**\n';
+                  comment += '- Review and fix the security issues above\n';
+                  comment += '- Pay special attention to command injection vulnerabilities\n';
+                  comment += '- Consider using environment variables instead of direct parameter substitution\n';
+                  comment += '- Validate all inputs before using them in commands\n\n';
+                  comment += '📋 **Full scan details available in the workflow logs**';
                 }
               } else {
                 comment += '✅ **No security issues found in code**\n\n';
