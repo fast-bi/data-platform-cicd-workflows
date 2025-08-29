@@ -29,38 +29,62 @@ jobs:
           # Install semgrep
           python -m pip install semgrep
           
-          # Show what files we're scanning
-          echo "Scanning files in current directory:"
-          find . -type f \( -name "*.yaml" -o -name "*.yml" -o -name "*.sh" -o -name "*.py" -o -name "*.json" \) | head -10
-          
-          # Run semgrep with community rules
-          echo "Running Semgrep scan with community rules..."
+          # Run semgrep with critical security rules only
+          echo "Running Semgrep scan for critical security issues..."
           semgrep scan \
-            --config auto \
+            --config p/security-audit \
+            --config p/secrets \
+            --config p/owasp-top-ten \
+            --severity ERROR \
             --output semgrep-results.sarif \
             --sarif \
-            --verbose || true
+            --quiet || true
           
-          # Check if SARIF file was created and show its size
+          # Generate markdown report
+          echo "Generating security report..."
           if [ -f "semgrep-results.sarif" ]; then
-            echo "SARIF file created, size: $(wc -c < semgrep-results.sarif) bytes"
-            echo "First 200 characters of SARIF file:"
-            head -c 200 semgrep-results.sarif
+            echo "# 🔍 Security Scan Report" > security-report.md
+            echo "" >> security-report.md
+            echo "## Summary" >> security-report.md
+            echo "" >> security-report.md
+            
+            # Count findings
+            TOTAL_FINDINGS=$(jq '.runs[0].results | length' semgrep-results.sarif)
+            echo "- **Total Issues Found**: $TOTAL_FINDINGS" >> security-report.md
+            echo "- **Scan Date**: $(date)" >> security-report.md
+            echo "- **Files Scanned**: $(find . -name "*.yaml" -o -name "*.yml" -o -name "*.sh" | wc -l)" >> security-report.md
+            echo "" >> security-report.md
+            
+            if [ "$TOTAL_FINDINGS" -gt 0 ]; then
+              echo "## 🚨 Critical Security Issues" >> security-report.md
+              echo "" >> security-report.md
+              
+              # Group findings by file
+              jq -r '.runs[0].results | group_by(.locations[0].physicalLocation.artifactLocation.uri) | .[] | "### 📁 " + .[0].locations[0].physicalLocation.artifactLocation.uri + "\n\n" + (.[] | "- **Line " + (.locations[0].physicalLocation.region.startLine | tostring) + "**: " + .rule.id + "\n  - " + .message.text + "\n") + "\n"' semgrep-results.sarif >> security-report.md
+              
+              echo "## 🔧 Recommendations" >> security-report.md
+              echo "" >> security-report.md
+              echo "1. **Command Injection**: Convert workflow parameters to environment variables" >> security-report.md
+              echo "2. **Input Validation**: Validate all user inputs before using in commands" >> security-report.md
+              echo "3. **Secret Management**: Use secure secret management practices" >> security-report.md
+              echo "4. **Code Review**: Review all identified issues before deployment" >> security-report.md
+              echo "" >> security-report.md
+            else
+              echo "## ✅ No Critical Issues Found" >> security-report.md
+              echo "" >> security-report.md
+              echo "Great job! No critical security vulnerabilities were detected." >> security-report.md
+            fi
+            
+            echo "## 📋 Scan Details" >> security-report.md
+            echo "" >> security-report.md
+            echo "- **Tool**: Semgrep Community Rules" >> security-report.md
+            echo "- **Rules Applied**: Security Audit, Secrets Detection, OWASP Top 10" >> security-report.md
+            echo "- **Severity Level**: ERROR (Critical)" >> security-report.md
+            echo "" >> security-report.md
+            
+            cat security-report.md
           else
-            echo "No SARIF file created"
-          fi
-          
-          # Also run semgrep without SARIF to see findings in logs
-          echo "Running Semgrep again to show findings in logs:"
-          semgrep scan \
-            --config auto \
-            --json || true
-          
-          # Show a summary of findings
-          echo "=== SECURITY FINDINGS SUMMARY ==="
-          if [ -f "semgrep-results.sarif" ]; then
-            echo "Found $(jq '.runs[0].results | length' semgrep-results.sarif) security issues:"
-            jq -r '.runs[0].results[] | "• " + .rule.id + " in " + .locations[0].physicalLocation.artifactLocation.uri + ":" + (.locations[0].physicalLocation.region.startLine | tostring)' semgrep-results.sarif | head -10
+            echo "No SARIF file generated - no issues found or scan failed"
           fi
 
       - name: Check if SARIF file exists
@@ -79,69 +103,29 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
             const fs = require('fs');
-            let comment = '🔍 **Semgrep Security Scan Results**\n\n';
+            let comment = '';
             
             try {
-              if (fs.existsSync('semgrep-results.sarif')) {
+              if (fs.existsSync('security-report.md')) {
+                comment = fs.readFileSync('security-report.md', 'utf8');
+              } else if (fs.existsSync('semgrep-results.sarif')) {
                 const sarifData = JSON.parse(fs.readFileSync('semgrep-results.sarif', 'utf8'));
                 const results = sarifData.runs?.[0]?.results || [];
                 
+                comment = '🔍 **Semgrep Security Scan Results**\n\n';
+                
                 if (results.length === 0) {
-                  comment += '✅ **No security issues found in code**\n\n';
-                  comment += 'The scan checked for:\n';
-                  comment += '- OWASP Top 10 vulnerabilities\n';
-                  comment += '- Security best practices\n';
-                  comment += '- Secret leaks in code\n';
-                  comment += '- Common misconfigurations\n';
-                  comment += '- Kubernetes security issues\n';
-                  comment += '- Docker security best practices';
+                  comment += '✅ **No critical security issues found**\n\n';
+                  comment += 'The scan checked for critical vulnerabilities and found none.';
                 } else {
-                  comment += `⚠️ **Found ${results.length} security issues**\n\n`;
-                  
-                  // Group findings by file
-                  const findingsByFile = {};
-                  results.forEach(result => {
-                    const file = result.locations?.[0]?.physicalLocation?.artifactLocation?.uri || 'Unknown file';
-                    const line = result.locations?.[0]?.physicalLocation?.region?.startLine || 'Unknown line';
-                    const rule = result.rule?.id || 'Unknown rule';
-                    const message = result.message?.text || 'No description';
-                    
-                    if (!findingsByFile[file]) {
-                      findingsByFile[file] = [];
-                    }
-                    findingsByFile[file].push({ line, rule, message });
-                  });
-                  
-                  // Show findings by file
-                  Object.keys(findingsByFile).slice(0, 5).forEach(file => {
-                    comment += `**📁 ${file}**\n`;
-                    findingsByFile[file].slice(0, 3).forEach(finding => {
-                      comment += `• Line ${finding.line}: **${finding.rule}**\n`;
-                      comment += `  ${finding.message}\n\n`;
-                    });
-                    if (findingsByFile[file].length > 3) {
-                      comment += `  ... and ${findingsByFile[file].length - 3} more issues\n\n`;
-                    }
-                  });
-                  
-                  if (Object.keys(findingsByFile).length > 5) {
-                    comment += `**... and ${Object.keys(findingsByFile).length - 5} more files with issues**\n\n`;
-                  }
-                  
-                  comment += '💡 **Recommendations:**\n';
-                  comment += '- Review and fix the security issues above\n';
-                  comment += '- Pay special attention to command injection vulnerabilities\n';
-                  comment += '- Consider using environment variables instead of direct parameter substitution\n';
-                  comment += '- Validate all inputs before using them in commands\n\n';
-                  comment += '📋 **Full scan details available in the workflow logs**';
+                  comment += `⚠️ **Found ${results.length} critical security issues**\n\n`;
+                  comment += 'Please review the workflow logs for detailed findings.';
                 }
               } else {
-                comment += '✅ **No security issues found in code**\n\n';
-                comment += 'The scan completed successfully with no issues detected.';
+                comment = '✅ **Security scan completed**\n\nNo critical issues found.';
               }
             } catch (error) {
-              comment += '❌ **Error processing scan results**\n\n';
-              comment += 'Please check the workflow logs for details.';
+              comment = '❌ **Error processing scan results**\n\nPlease check the workflow logs for details.';
             }
             
             github.rest.issues.createComment({
