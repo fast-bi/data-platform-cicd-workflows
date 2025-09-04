@@ -326,7 +326,7 @@ spec:
       metadata: {}
       container:
         name: ''
-        image: '{{workflow.parameters.docker_image_repository_hub}}/{{workflow.parameters.docker_image_repository}}/{{workflow.parameters.tsb_sqlfluff_core_image_name}}:{{workflow.parameters.tsb_sqlfluff_core_image_tag}}'
+        image: '{{workflow.parameters.docker_image_repository_hub}}/{{workflow.parameters.docker_image_repository}}/{{workflow.parameters.data_code_quality_core_image_name}}:{{workflow.parameters.data_code_quality_core_image_tag}}'
         command:
           - bash
           - '-c'
@@ -556,7 +556,7 @@ spec:
       metadata: {}
       container:
         name: ''
-        image: '{{workflow.parameters.docker_image_repository_hub}}/{{workflow.parameters.docker_image_repository}}/{{workflow.parameters.tsb_dbt_core_image_name}}:{{workflow.parameters.tsb_dbt_core_image_tag}}'
+        image: '{{workflow.parameters.docker_image_repository_hub}}/{{workflow.parameters.docker_image_repository}}/{{workflow.parameters.dbt_workflow_core_image_name}}:{{workflow.parameters.dbt_workflow_core_image_tag}}'
         command:
           - bash
           - '-c'
@@ -891,7 +891,7 @@ spec:
       metadata: {}
       container:
         name: ''
-        image: '{{workflow.parameters.docker_image_repository_hub}}/{{workflow.parameters.docker_image_repository}}/{{workflow.parameters.tsb_dbt_core_image_name}}:{{workflow.parameters.tsb_dbt_core_image_tag}}'
+        image: '{{workflow.parameters.docker_image_repository_hub}}/{{workflow.parameters.docker_image_repository}}/{{workflow.parameters.dbt_workflow_core_image_name}}:{{workflow.parameters.dbt_workflow_core_image_tag}}'
         command:
           - bash
           - '-c'
@@ -1749,24 +1749,24 @@ spec:
       - name: storage_class
         value: "standard"
       - name: docker_image_repository_hub
-        value: europe-central2-docker.pkg.dev
+        value: docker.io
       - name: docker_image_repository
-        value: fast-bi-common/bi-platform
+        value: 4fastbi
       - name: check_on_branch
         value: "false"  # default value
 #fast.bi CICD Pipeline Images
-      - name: tsb_dbt_core_image_name
-        value: tsb-dbt-core
-      - name: tsb_dbt_core_image_tag
-        value: v1.9.2.1
+      - name: dbt_workflow_core_image_name
+        value: dbt-workflow-core
+      - name: dbt_workflow_core_image_tag
+        value: v0.1.0
       - name: data_analysis_import_core_image_name
-        value: tsb-data-analysis-import-core
+        value: data-analysis-import-core
       - name: data_analysis_import_core_image_tag
-        value: v0.1.2
-      - name: tsb_sqlfluff_core_image_name
-        value: tsb-sqlfluff-core
-      - name: tsb_sqlfluff_core_image_tag
-        value: v3.4.0
+        value: v0.1.0
+      - name: data_code_quality_core_image_name
+        value: data-code-quality-core
+      - name: data_code_quality_core_image_tag
+        value: v0.1.0
       - name: repo_url
       - name: revision
       - name: branch

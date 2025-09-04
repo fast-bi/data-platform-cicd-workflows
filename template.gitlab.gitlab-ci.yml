@@ -5,7 +5,8 @@ variables:
   ARGO_SECURE: 'true'
   ARGO_NAMESPACE: cicd-workflows
   CI_DEBUG_TRACE: "false"
-  CICD_WORKFLOWS_TEMPLATE_VERSION: "latest"
+  CICD_WORKFLOWS_TEMPLATE_VERSION: "v0.1.0"
+  STORAGE_CLASS: "standard"
   PS4: ""
 
 default:
