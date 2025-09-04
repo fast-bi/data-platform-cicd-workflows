@@ -397,7 +397,7 @@ spec:
       metadata: {}
       container:
         name: ''
-        image: '{{workflow.parameters.docker_image_repository_hub}}/{{workflow.parameters.docker_image_repository}}/{{workflow.parameters.tsb_data_orchestrator_core_image_name}}:{{workflow.parameters.tsb_data_orchestrator_core_image_tag}}'
+        image: '{{workflow.parameters.docker_image_repository_hub}}/{{workflow.parameters.docker_image_repository}}/{{workflow.parameters.data_orchestrator_core_image_name}}:{{workflow.parameters.data_orchestrator_core_image_tag}}'
         command:
           - bash
           - '-c'
@@ -1140,7 +1140,7 @@ spec:
       metadata: {}
       container:
         name: ''
-        image: '{{workflow.parameters.docker_image_repository_hub}}/{{workflow.parameters.docker_image_repository}}/{{workflow.parameters.tsb_dbt_core_image_name}}:{{workflow.parameters.tsb_dbt_core_image_tag}}'
+        image: '{{workflow.parameters.docker_image_repository_hub}}/{{workflow.parameters.docker_image_repository}}/{{workflow.parameters.dbt_workflow_core_image_name}}:{{workflow.parameters.dbt_workflow_core_image_tag}}'
         command:
           - bash
           - '-c'
@@ -1594,7 +1594,7 @@ spec:
       metadata: {}
       container:
         name: ''
-        image: '{{workflow.parameters.docker_image_repository_hub}}/{{workflow.parameters.docker_image_repository}}/{{workflow.parameters.tsb_data_orchestrator_core_image_name}}:{{workflow.parameters.tsb_data_orchestrator_core_image_tag}}'
+        image: '{{workflow.parameters.docker_image_repository_hub}}/{{workflow.parameters.docker_image_repository}}/{{workflow.parameters.data_orchestrator_core_image_name}}:{{workflow.parameters.data_orchestrator_core_image_tag}}'
         command:
           - bash
           - '-c'
@@ -2190,7 +2190,7 @@ spec:
       metadata: {}
       container:
         name: ''
-        image: '{{workflow.parameters.docker_image_repository_hub}}/{{workflow.parameters.docker_image_repository}}/{{workflow.parameters.tsb_dbt_core_image_name}}:{{workflow.parameters.tsb_dbt_core_image_tag}}'
+        image: '{{workflow.parameters.docker_image_repository_hub}}/{{workflow.parameters.docker_image_repository}}/{{workflow.parameters.dbt_workflow_core_image_name}}:{{workflow.parameters.dbt_workflow_core_image_tag}}'
         command:
           - bash
           - '-c'
@@ -3079,7 +3079,7 @@ spec:
       metadata: {}
       container:
         name: ''
-        image: '{{workflow.parameters.docker_image_repository_hub}}/{{workflow.parameters.docker_image_repository}}/{{workflow.parameters.tsb_datahub_collector_core_image_name}}:{{workflow.parameters.tsb_datahub_collector_core_image_tag}}'
+        image: '{{workflow.parameters.docker_image_repository_hub}}/{{workflow.parameters.docker_image_repository}}/{{workflow.parameters.data_governance_collector_core_image_name}}:{{workflow.parameters.data_governance_collector_core_image_tag}}'
         command:
           - bash
           - '-c'
@@ -3517,7 +3517,7 @@ spec:
       metadata: {}
       container:
         name: ''
-        image: '{{workflow.parameters.docker_image_repository_hub}}/{{workflow.parameters.docker_image_repository}}/{{workflow.parameters.tsb_data_catalog_deployment_template_core_image_name}}:{{workflow.parameters.tsb_data_catalog_deployment_template_core_image_tag}}'
+        image: '{{workflow.parameters.docker_image_repository_hub}}/{{workflow.parameters.docker_image_repository}}/{{workflow.parameters.data_catalog_template_core_image_name}}:{{workflow.parameters.data_catalog_template_core_image_tag}}'
         command:
           - bash
           - '-c'
@@ -3681,7 +3681,7 @@ spec:
           - name: NAMESPACE
             value: "data-catalog"
           - name: DBT_DOCS_CORE_IMAGE
-            value: "europe-central2-docker.pkg.dev/fast-bi-common/bi-platform/tsb-docs-core:v1.0.8"
+            value: "4fastbi/data-catalog-core:v0.1.0"
           - name: CUSTOMER
             valueFrom:
               secretKeyRef:
@@ -3753,7 +3753,7 @@ spec:
       metadata: {}
       container:
         name: ''
-        image: '{{workflow.parameters.docker_image_repository_hub}}/{{workflow.parameters.docker_image_repository}}/{{workflow.parameters.tsb_data_quality_deployment_template_core_image_name}}:{{workflow.parameters.tsb_data_quality_deployment_template_core_image_tag}}'
+        image: '{{workflow.parameters.docker_image_repository_hub}}/{{workflow.parameters.docker_image_repository}}/{{workflow.parameters.data_quality_template_core_image_name}}:{{workflow.parameters.data_quality_template_core_image_tag}}'
         command:
           - bash
           - '-c'
@@ -3897,7 +3897,7 @@ spec:
           - name: NAMESPACE
             value: "data-quality"
           - name: DBT_REDATA_CORE_IMAGE
-            value: "europe-central2-docker.pkg.dev/fast-bi-common/bi-platform/tsb-redata-core:v1.0.8"
+            value: "4fastbi/data-quality-core:v0.1.0"
           - name: CUSTOMER
             valueFrom:
               secretKeyRef:
@@ -4094,38 +4094,34 @@ spec:
       - name: storage_class
         value: "standard"
       - name: docker_image_repository_hub
-        value: europe-central2-docker.pkg.dev
+        value: docker.io
       - name: docker_image_repository
-        value: fast-bi-common/bi-platform
+        value: 4fastbi
 #fast.bi CICD Pipeline Images
       - name: data_analysis_import_core_image_name
-        value: tsb-data-analysis-import-core
+        value: data-analysis-import-core
       - name: data_analysis_import_core_image_tag
-        value: v0.1.2
-      - name: tsb_data_orchestrator_core_image_name
-        value: tsb-data-orchestrator-core
-      - name: tsb_data_orchestrator_core_image_tag
-        value: v1.2.1
-      - name: tsb_dbt_core_image_name
-        value: tsb-dbt-core
-      - name: tsb_dbt_core_image_tag
-        value: v1.9.2.1
-      - name: tsb_dbt_core_api_server_deployment_image_name
-        value: tsb-dbt-core-api-server-deployment
-      - name: tsb_dbt_core_api_server_deployment_image_tag
-        value: v0.0.5
-      - name: tsb_datahub_collector_core_image_name
-        value: tsb-datahub-collector-core
-      - name: tsb_datahub_collector_core_image_tag
-        value: v1.0.8
-      - name: tsb_data_catalog_deployment_template_core_image_name
-        value: tsb-data-catalog-deployment-template-core
-      - name: tsb_data_catalog_deployment_template_core_image_tag
-        value: v1.1.5
-      - name: tsb_data_quality_deployment_template_core_image_name
-        value: tsb-data-quality-deployment-template-core
-      - name: tsb_data_quality_deployment_template_core_image_tag
-        value: v1.1.5
+        value: v0.1.0
+      - name: data_orchestrator_core_image_name
+        value: data-orchestrator-core
+      - name: data_orchestrator_core_image_tag
+        value: v0.1.0
+      - name: dbt_workflow_core_image_name
+        value: dbt-workflow-core
+      - name: dbt_workflow_core_image_tag
+        value: v0.1.0
+      - name: data_governance_collector_core_image_name
+        value: data-governance-collector-core
+      - name: data_governance_collector_core_image_tag
+        value: v0.1.0
+      - name: data_catalog_template_core_image_name
+        value: data-catalog-template-core
+      - name: data_catalog_template_core_image_tag
+        value: v0.1.0
+      - name: data_quality_template_core_image_name
+        value: data-quality-template-core
+      - name: data_quality_template_core_image_tag
+        value: v0.1.0
       - name: repo_url
       - name: revision
       - name: commit_short_sha
