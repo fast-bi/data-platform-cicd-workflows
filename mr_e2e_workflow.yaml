@@ -548,7 +548,6 @@ spec:
                                 else
                                     echo "⚙️ [PROCESS] Running Lightdash metadata validation"
                                     # Troubleshooting
-                                    sleep 1800
                                     cp -r /usr/app/data_analysis_import/lightdash/dbt2lightdash/* ./ || { echo "❌ [ERROR] Failed to copy Lightdash validation files"; exit 1; }
                                     /bin/bash dbt2lightdash.sh 2>&1 | tee -a /workdir/data_analysis_validating_procedure.log || { echo "❌ [ERROR] Lightdash validation failed"; exit 1; }
                                     echo "✅ [SUCCESS] Lightdash metadata validation completed"
