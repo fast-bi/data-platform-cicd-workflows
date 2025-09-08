@@ -2698,6 +2698,11 @@ spec:
                       echo "⚙️ [PROCESS] Importing variables from Airflow Secret yml file..."
                       export DATA_ANALYSIS_PROJECT=$(grep 'DATA_ANALYSIS_PROJECT:' "$AIRFLOW_SECRET_FILE_NAME" | tail -n1 | awk '{print $2}' | tr -d "'") || { echo "❌ [ERROR] Failed to extract DATA_ANALYSIS_PROJECT"; exit 1; }
                       export DBT_PROJECT_NAME=$(grep 'DBT_PROJECT_NAME:' "$AIRFLOW_SECRET_FILE_NAME" | tail -n1 | awk '{print $2}' | tr -d "'") || { echo "❌ [ERROR] Failed to extract DBT_PROJECT_NAME"; exit 1; }
+                      export TARGET=$(grep 'TARGET:' "$AIRFLOW_SECRET_FILE_NAME" | tail -n1 | awk '{print $2}' | tr -d "'") || { echo "❌ [ERROR] Failed to extract TARGET"; exit 1; }
+                      
+                      echo "⚙️ [PROCESS] Extracting project configuration..."
+                      DEFAULT_PROJECT_NAME=$(yq -r 'keys | .[0]' profiles.yml) || { echo "❌ [ERROR] Failed to extract project name"; exit 1; }
+                      DEFAULT_TARGET=$(yq -r ".${DEFAULT_PROJECT_NAME}.target" profiles.yml) || { echo "❌ [ERROR] Failed to extract default target"; exit 1; }
                       
                       echo "⚙️ [PROCESS] Authenticating to Lightdash..."
                       echo -ne '\n' | lightdash login "${LIGHTDASH_URL}" --token "${LIGHTDASH_API_KEY}" || { echo "❌ [ERROR] Failed to authenticate with Lightdash"; exit 1; }
@@ -2726,7 +2731,7 @@ spec:
                           dbt deps --quiet 2>&1 || { echo "❌ [ERROR] Failed to install dbt dependencies"; exit 1; }
                           
                           echo "⚙️ [PROCESS] Running dbt models..."
-                          dbt run --profiles-dir . --exclude test_type:generic test_type:singular package:re_data --target ${TARGET} --empty --quiet 2>&1 || { echo "❌ [ERROR] Failed to run dbt models"; exit 1; }
+                          dbt run --profiles-dir . --exclude test_type:generic test_type:singular package:re_data --target ${DEFAULT_TARGET} --empty --quiet 2>&1 || { echo "❌ [ERROR] Failed to run dbt models"; exit 1; }
                           
                           echo "⚙️ [PROCESS] Creating Lightdash project..."
                           (echo -ne '\n'; echo -ne '\n') | lightdash deploy --create "${DBT_PROJECT_NAME}" --profiles-dir . --exclude package:re_data --verbose || { echo "❌ [ERROR] Failed to create Lightdash project"; exit 1; }
@@ -2834,7 +2839,7 @@ spec:
             echo "✅ [SUCCESS] DBT Project Manifest Compilation completed successfully"
             echo "📋 [CONFIG] All folders processed with commit: {{inputs.parameters.commit_short_sha}}"
             echo "==========================================="
-        env:
+        env:        
           - name: DATA_ANALYSIS_PLATFORM
             valueFrom:
               secretKeyRef:
