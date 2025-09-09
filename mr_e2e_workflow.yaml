@@ -5218,11 +5218,14 @@ spec:
     - name: ssh-keys
       secret:
         secretName: argo-workflows-git-secret
+        defaultMode: 384  # 0600 in octal
         items:
           - key: private
             path: id_rsa
+            mode: 384  # 0600 in octal
           - key: public
             path: id_rsa.pub
+            mode: 420  # 0644 in octal
   volumeClaimTemplates:
     - metadata:
         name: workdir
