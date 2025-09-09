@@ -2190,6 +2190,9 @@ spec:
             mountPath: /workdir
           - name: gcp-sa-secret-file
             mountPath: /secrets
+          - name: ssh-keys
+            mountPath: /root/.ssh/
+            readOnly: true
     - name: compile-dag-e2e
       inputs:
         parameters:
@@ -2732,6 +2735,9 @@ spec:
             mountPath: /workdir
           - name: gcp-sa-secret-file
             mountPath: /secrets
+          - name: ssh-keys
+            mountPath: /root/.ssh/
+            readOnly: true
     - name: data-model-e2e-dag-run-trigger
       inputs:
         parameters:
@@ -5202,6 +5208,14 @@ spec:
         secretName: fastbi-argo-workflows-secrets
     - name: gcp-sa-secret-file
       emptyDir: {}
+    - name: ssh-keys
+      secret:
+        secretName: argo-workflows-git-secret
+        items:
+          - key: private
+            path: id_rsa
+          - key: public
+            path: id_rsa.pub
   volumeClaimTemplates:
     - metadata:
         name: workdir

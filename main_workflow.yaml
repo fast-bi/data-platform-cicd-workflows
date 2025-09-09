@@ -1576,6 +1576,9 @@ spec:
             mountPath: /workdir
           - name: gcp-sa-secret-file
             mountPath: /secrets
+          - name: ssh-keys
+            mountPath: /root/.ssh/
+            readOnly: true
     - name: compile-dag
       inputs:
         parameters:
@@ -2175,6 +2178,9 @@ spec:
             mountPath: /workdir
           - name: gcp-sa-secret-file
             mountPath: /secrets
+          - name: ssh-keys
+            mountPath: /root/.ssh/
+            readOnly: true
     - name: refresh-dbt-incremental-modules
       inputs:
         parameters:
@@ -4142,6 +4148,14 @@ spec:
       emptyDir: {}
     - name: workdir-temp
       emptyDir: {}
+    - name: ssh-keys
+      secret:
+        secretName: argo-workflows-git-secret
+        items:
+          - key: private
+            path: id_rsa
+          - key: public
+            path: id_rsa.pub
   volumeClaimTemplates:
     - metadata:
         name: workdir
