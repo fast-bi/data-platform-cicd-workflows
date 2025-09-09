@@ -1303,8 +1303,11 @@ spec:
                     exit 1
                   else
                     echo "✅ [SUCCESS] All Airflow variables are defined"
-                    echo "📋 [CONFIG] Configuring Git for Airflow deployment"
+
+                    echo "⚙️ [PROCESS] Setting up SSH keys..."
+                    export GIT_SSH_COMMAND="ssh -i /root/.ssh/id_rsa -o StrictHostKeyChecking=no"
                     
+                    echo "📋 [CONFIG] Configuring Git for Airflow deployment"
                     git config --global user.email "${GIT_USER_EMAIL}" || { echo "❌ [ERROR] Failed to set Git user email"; exit 1; }
                     git config --global user.name "${GIT_USER_NAME}" || { echo "❌ [ERROR] Failed to set Git user name"; exit 1; }
                     
@@ -1578,7 +1581,6 @@ spec:
             mountPath: /secrets
           - name: ssh-keys
             mountPath: /root/.ssh/
-            readOnly: true
     - name: compile-dag
       inputs:
         parameters:
@@ -1894,6 +1896,10 @@ spec:
                     exit 1
                   else
                     echo "✅ [SUCCESS] All Airflow variables are defined"
+
+                    echo "⚙️ [PROCESS] Setting up SSH keys..."
+                    export GIT_SSH_COMMAND="ssh -i /root/.ssh/id_rsa -o StrictHostKeyChecking=no"
+
                     echo "📋 [CONFIG] Configuring Git for DAG repository"
                     git config --global user.email "${GIT_USER_EMAIL}"
                     git config --global user.name "${GIT_USER_NAME}"
@@ -2180,7 +2186,6 @@ spec:
             mountPath: /secrets
           - name: ssh-keys
             mountPath: /root/.ssh/
-            readOnly: true
     - name: refresh-dbt-incremental-modules
       inputs:
         parameters:
@@ -4151,11 +4156,14 @@ spec:
     - name: ssh-keys
       secret:
         secretName: argo-workflows-git-secret
+        defaultMode: 384
         items:
           - key: private
             path: id_rsa
+            mode: 384
           - key: public
             path: id_rsa.pub
+            mode: 420
   volumeClaimTemplates:
     - metadata:
         name: workdir
