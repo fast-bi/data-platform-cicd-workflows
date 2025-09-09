@@ -2199,7 +2199,6 @@ spec:
             mountPath: /secrets
           - name: ssh-keys
             mountPath: /root/.ssh/
-            readOnly: true
     - name: compile-dag-e2e
       inputs:
         parameters:
@@ -2744,7 +2743,6 @@ spec:
             mountPath: /secrets
           - name: ssh-keys
             mountPath: /root/.ssh/
-            readOnly: true
     - name: data-model-e2e-dag-run-trigger
       inputs:
         parameters:
