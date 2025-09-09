@@ -1962,11 +1962,13 @@ spec:
                   fi
                   
                   echo "⚙️ [PROCESS] Setting up SSH keys..."
-                  ssh-keyscan github.com >> /root/.ssh/known_hosts
                   chmod 700 /root/.ssh
                   chmod 600 /root/.ssh/id_rsa
                   chmod 644 /root/.ssh/id_rsa.pub
                   export GIT_SSH_COMMAND="ssh -i /root/.ssh/id_rsa -o StrictHostKeyChecking=no"
+
+                  #Debug 
+                  sleep 1200
 
                   echo "⚙️ [PROCESS] Cloning Airflow dags repository for upload procedure..."
                   git config --global user.email "${GIT_USER_EMAIL}"
