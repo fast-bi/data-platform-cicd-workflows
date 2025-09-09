@@ -1305,7 +1305,7 @@ spec:
                     echo "✅ [SUCCESS] All Airflow variables are defined"
 
                     echo "⚙️ [PROCESS] Setting up SSH keys..."
-                    export GIT_SSH_COMMAND="ssh -i /root/.ssh/id_rsa -o StrictHostKeyChecking=no"
+                    export GIT_SSH_COMMAND="ssh -i /root/.ssh/id_rsa -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null"
                     
                     echo "📋 [CONFIG] Configuring Git for Airflow deployment"
                     git config --global user.email "${GIT_USER_EMAIL}" || { echo "❌ [ERROR] Failed to set Git user email"; exit 1; }
@@ -1898,7 +1898,7 @@ spec:
                     echo "✅ [SUCCESS] All Airflow variables are defined"
 
                     echo "⚙️ [PROCESS] Setting up SSH keys..."
-                    export GIT_SSH_COMMAND="ssh -i /root/.ssh/id_rsa -o StrictHostKeyChecking=no"
+                    export GIT_SSH_COMMAND="ssh -i /root/.ssh/id_rsa -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null"
 
                     echo "📋 [CONFIG] Configuring Git for DAG repository"
                     git config --global user.email "${GIT_USER_EMAIL}"
