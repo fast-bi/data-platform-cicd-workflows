@@ -1962,9 +1962,7 @@ spec:
                   fi
                   
                   echo "⚙️ [PROCESS] Setting up SSH keys..."
-                  export GIT_SSH_COMMAND="ssh -i /root/.ssh/id_rsa -o StrictHostKeyChecking=no"
-
-                  sleep 360
+                  export GIT_SSH_COMMAND="ssh -i /root/.ssh/id_rsa -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null"
 
                   echo "⚙️ [PROCESS] Cloning Airflow dags repository for upload procedure..."
                   git config --global user.email "${GIT_USER_EMAIL}"
@@ -2497,7 +2495,7 @@ spec:
                     exit 1
                   else
                     echo "⚙️ [PROCESS] Setting up SSH keys..."
-                    export GIT_SSH_COMMAND="ssh -i /root/.ssh/id_rsa -o StrictHostKeyChecking=no"
+                    export GIT_SSH_COMMAND="ssh -i /root/.ssh/id_rsa -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null"
 
                     echo "✅ [SUCCESS] All Airflow variables are defined"
                     echo "⚙️ [PROCESS] Cloning Airflow dags repository for upload procedure"
@@ -4470,7 +4468,7 @@ spec:
                     echo "✅ [SUCCESS] All variables are defined"
                     
                     echo "⚙️ [PROCESS] Setting up SSH keys..."
-                    export GIT_SSH_COMMAND="ssh -i /root/.ssh/id_rsa -o StrictHostKeyChecking=no"
+                    export GIT_SSH_COMMAND="ssh -i /root/.ssh/id_rsa -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null"
 
                     echo "⚙️ [PROCESS] Setting up git configuration..."
                     git config --global user.email "${GIT_USER_EMAIL}"
@@ -4564,7 +4562,7 @@ spec:
                       echo "✅ [SUCCESS] All required variables are defined"
                     
                       echo "⚙️ [PROCESS] Setting up SSH keys..."
-                      export GIT_SSH_COMMAND="ssh -i /root/.ssh/id_rsa -o StrictHostKeyChecking=no"
+                      export GIT_SSH_COMMAND="ssh -i /root/.ssh/id_rsa -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null"
 
                       echo "⚙️ [PROCESS] Configuring git..."
                       git config --global user.email "${GIT_USER_EMAIL}"
@@ -4661,7 +4659,7 @@ spec:
                     echo "✅ [SUCCESS] All variables are defined"
 
                     echo "⚙️ [PROCESS] Setting up SSH keys..."
-                    export GIT_SSH_COMMAND="ssh -i /root/.ssh/id_rsa -o StrictHostKeyChecking=no"
+                    export GIT_SSH_COMMAND="ssh -i /root/.ssh/id_rsa -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null"
 
                     echo "⚙️ [PROCESS] Setting up git configuration..."
                     git config --global user.email "${GIT_USER_EMAIL}"
