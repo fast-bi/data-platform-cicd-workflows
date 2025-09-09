@@ -1964,6 +1964,8 @@ spec:
                   echo "⚙️ [PROCESS] Setting up SSH keys..."
                   export GIT_SSH_COMMAND="ssh -i /root/.ssh/id_rsa -o StrictHostKeyChecking=no"
 
+                  sleep 360
+
                   echo "⚙️ [PROCESS] Cloning Airflow dags repository for upload procedure..."
                   git config --global user.email "${GIT_USER_EMAIL}"
                   git config --global user.name "${GIT_USER_NAME}"
