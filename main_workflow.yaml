@@ -2292,6 +2292,7 @@ spec:
                   echo "✅ [SUCCESS] All required variables are defined"
                   echo "⚙️ [PROCESS] Importing variables from Airflow secret file..."
                   export DBT_PROJECT_NAME=$(grep 'DBT_PROJECT_NAME:' "$AIRFLOW_SECRET_FILE_NAME" | tail -n1 | awk '{print $2}' | tr -d "'") || { echo "❌ [ERROR] Failed to extract DBT_PROJECT_NAME"; exit 1; }
+                  export DATA_QUALITY_FORCE_E2E=$(grep 'DATA_QUALITY_FORCE_E2E:' "$AIRFLOW_SECRET_FILE_NAME" | tail -n1 | awk '{print $2}' | tr -d "'") || { echo "❌ [ERROR] Failed to extract DATA_QUALITY_FORCE_E2E"; exit 1; }
                 fi
                 
                 touch /workdir/refresh_dbt_incremental_modules.log || { echo "❌ [ERROR] Failed to create log file"; exit 1; }
@@ -2334,7 +2335,9 @@ spec:
                 echo "==========================================="
                 
                 if [ -f "packages.yml" ]; then
+                  if [ "${DATA_QUALITY_FORCE_E2E}" != "True" ] && [ "${DATA_QUALITY_FORCE_E2E}" != "true" ] && [ "${DATA_QUALITY_FORCE_E2E}" != "TRUE" ]; then
                   check_and_modify_packages
+                  fi
                 else
                   echo "📋 [CONFIG] No packages.yml file found, skipping package modifications"
                 fi
