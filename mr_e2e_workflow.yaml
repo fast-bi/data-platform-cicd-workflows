@@ -598,13 +598,14 @@ spec:
                                 export DATA_ANALYSIS_PROJECT=$(grep 'DATA_ANALYSIS_PROJECT:' "$AIRFLOW_SECRET_FILE_NAME" | tail -n1 | awk '{print $2}' | tr -d "'") || { echo "❌ [ERROR] Failed to extract DATA_ANALYSIS_PROJECT"; exit 1; }
                                 export TARGET=$(grep 'TARGET:' "$AIRFLOW_SECRET_FILE_NAME" | tail -n1 | awk '{print $2}' | tr -d "'") || { echo "❌ [ERROR] Failed to extract TARGET"; exit 1; }
                                 export GIT_BRANCH=$(grep 'GIT_BRANCH:' "$AIRFLOW_SECRET_FILE_NAME" | tail -n1 | awk '{print $2}' | tr -d "'") || { echo "❌ [ERROR] Failed to extract GIT_BRANCH"; exit 1; }
-                                
+                                export PROJECT_ID=$(grep 'PROJECT_ID:' "$AIRFLOW_SECRET_FILE_NAME" | tail -n1 | awk '{print $2}' | tr -d "'") || { echo "❌ [ERROR] Failed to extract PROJECT_ID"; exit 1; }
+
                                 if [[ -z "${DATA_ANALYSIS_PROJECT}" || "${DATA_ANALYSIS_PROJECT}" == "false" || "${DATA_ANALYSIS_PROJECT}" == "False" ]]; then
                                     echo "⚠️ [WARNING] Metabase Metadata Validation is disabled, skipping"
                                 else
                                     echo "⚙️ [PROCESS] Running Metabase metadata validation"
                                     cp -r /usr/app/data_analysis_import/metabase/dbt2metabase/* ./ || { echo "❌ [ERROR] Failed to copy Metabase validation files"; exit 1; }
-                                    /bin/bash dbt2metabase.sh 2>&1 | tee -a /workdir/data_analysis_validating_procedure.log || { echo "❌ [ERROR] Metabase validation failed"; exit 1; }
+                                    /bin/bash dbt2metabase.sh ${DATA_WAREHOUSE_PLATFORM,,} 2>&1 | tee -a /workdir/data_analysis_validating_procedure.log || { echo "❌ [ERROR] Metabase validation failed"; exit 1; }
                                     echo "✅ [SUCCESS] Metabase metadata validation completed"
                                 fi
                             fi
