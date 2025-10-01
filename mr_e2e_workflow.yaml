@@ -5062,7 +5062,7 @@ spec:
       metadata: {}
       container:
         name: ''
-        image: bitnami/kubectl
+        image: bitnamilegacy/kubectl:1.33.4
         command:
           - sh
           - '-c'
