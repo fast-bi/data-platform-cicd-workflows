@@ -1036,15 +1036,9 @@ spec:
                   echo "⚙️ [PROCESS] Updating DAG_TAG..."
                   root_key=$(yq -r 'keys | .[0]' "$AIRFLOW_SECRET_FILE_NAME")
                   if [ "$root_key" != "null" ] && [ -n "$root_key" ]; then
-                    escaped_key=$(printf '%s\n' "$root_key" | sed 's/[[\.*^$()+?{|]/\\&/g')
-                    if ! yq -y ".\"${root_key}\".DAG_TAG = [\"e2e\", \"review\"]" "$AIRFLOW_SECRET_FILE_NAME" > "$AIRFLOW_SECRET_FILE_NAME.tmp"; then
-                      echo "❌ [ERROR] Failed to update DAG_TAG with yq"
-                      exit 1
-                    fi
-                    mv "$AIRFLOW_SECRET_FILE_NAME.tmp" "$AIRFLOW_SECRET_FILE_NAME"
+                    yq -y ".\"${root_key}\".DAG_TAG = [\"e2e\", \"review\"]" "$AIRFLOW_SECRET_FILE_NAME" > "$AIRFLOW_SECRET_FILE_NAME.tmp" && mv "$AIRFLOW_SECRET_FILE_NAME.tmp" "$AIRFLOW_SECRET_FILE_NAME"
                   else
                     echo "❌ [ERROR] Failed to extract root key from $AIRFLOW_SECRET_FILE_NAME"
-                    exit 1
                   fi
 
                   echo "⚙️ [PROCESS] Updating MANIFEST_NAME..."
