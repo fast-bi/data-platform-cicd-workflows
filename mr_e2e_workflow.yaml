@@ -1034,9 +1034,13 @@ spec:
                   sed -i "s/DAG_ID.*/DAG_ID: '${dag_id}_${branch_name}'/" $AIRFLOW_SECRET_FILE_NAME
 
                   echo "⚙️ [PROCESS] Updating DAG_TAG..."
-                  # Get the root key and update DAG_TAG under that specific key
                   root_key=$(yq -r 'keys | .[0]' "$AIRFLOW_SECRET_FILE_NAME")
-                  yq -y ".\"${root_key}\".DAG_TAG = [\"e2e\", \"review\"]" "$AIRFLOW_SECRET_FILE_NAME" > "$AIRFLOW_SECRET_FILE_NAME.tmp" && mv "$AIRFLOW_SECRET_FILE_NAME.tmp" "$AIRFLOW_SECRET_FILE_NAME"
+                  if [ "$root_key" != "null" ] && [ -n "$root_key" ]; then
+                    yq -y ".\"${root_key}\".DAG_TAG = [\"e2e\", \"review\"]" "$AIRFLOW_SECRET_FILE_NAME" > "$AIRFLOW_SECRET_FILE_NAME.tmp" && mv "$AIRFLOW_SECRET_FILE_NAME.tmp" "$AIRFLOW_SECRET_FILE_NAME"
+                  else
+                    echo "❌ [ERROR] Failed to extract root key from $AIRFLOW_SECRET_FILE_NAME"
+                    exit 1
+                  fi
 
                   echo "⚙️ [PROCESS] Updating MANIFEST_NAME..."
                   manifest_name=$(grep 'MANIFEST_NAME:' $AIRFLOW_SECRET_FILE_NAME | tail -n1 | awk '{print $2}' | tr -d "'" )
