@@ -5215,7 +5215,7 @@ spec:
       - name: data_orchestrator_core_image_name
         value: data-orchestrator-core
       - name: data_orchestrator_core_image_tag
-        value: v0.1.0
+        value: v0.1.1
       - name: dbt_workflow_core_image_name
         value: dbt-workflow-core
       - name: dbt_workflow_core_image_tag
