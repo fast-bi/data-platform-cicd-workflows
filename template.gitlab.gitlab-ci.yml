@@ -1,6 +1,6 @@
 variables:
   ARGO_SERVER: "data-platform-argo-workflows-server.cicd-workflows:2746"
-  ARGO_CLI_VERSION: 'v3.7.2'
+  ARGO_CLI_VERSION: 'v3.7.6'
   ARGO_HTTP1: 'true'  
   ARGO_SECURE: 'true'
   ARGO_NAMESPACE: cicd-workflows
