@@ -1286,6 +1286,8 @@ spec:
                     
                     # Copy files to final destination for bash operator 
                     if [[ "$operator" == "bash" ]]; then
+                      echo "⚙️ [PROCESS] Removing existing files..."
+                      gsutil rm -rf "gs://$GCP_BUCKET_NAME/dags/dbt/${DBT_PROJECT_NAME}/*" || true
                       echo "📤 [UPLOAD] Copying DBT files to GCS for bash operator"
                       gsutil cp "/tmp/dbt_project_bash_operator/$folder/"* "gs://$GCP_BUCKET_NAME/dags/dbt/${DBT_PROJECT_NAME}" || { echo "❌ [ERROR] Failed to copy DBT files to GCS"; exit 1; }
                       echo "✅ [SUCCESS] DBT files copied to GCS"
@@ -1340,9 +1342,12 @@ spec:
                     
                     # Copy files to final destination for bash operator 
                     if [[ "$operator" == "bash" ]]; then
+                      echo "⚙️ [PROCESS] Removing existing files..."
+                      rm -rf "$REPO_DIR/dags/dbt/${DBT_PROJECT_NAME}/*" || true
                       echo "📤 [UPLOAD] Copying DBT files for bash operator"
                       mkdir -p "$REPO_DIR/dags/dbt/${DBT_PROJECT_NAME}" || { echo "❌ [ERROR] Failed to create DBT files directory"; exit 1; }
                       cp -r "/tmp/dbt_project_bash_operator/$folder/"* "$REPO_DIR/dags/dbt/${DBT_PROJECT_NAME}" || { echo "❌ [ERROR] Failed to copy DBT files to repository"; exit 1; }
+                      echo "✅ [SUCCESS] DBT files copied to Airflow repository"
                     fi
                     
                     echo "✅ [SUCCESS] Files uploaded to Airflow repository"

@@ -1144,7 +1144,7 @@ spec:
                   tomorrow=$(date -d "+1 day" +%F)
                   cron_date=$(date -d "$tomorrow" '+%M %H %d %m *')
                   # Calculate time +2 hours from now
-                  schedule_time=$(date -d "+2 hours" '+%M %H')
+                  schedule_time=$(date -d "+6 hours" '+%M %H')
                   # Extract minute and hour
                   minute=$(echo "$schedule_time" | awk '{print $1}')
                   hour=$(echo "$schedule_time" | awk '{print $2}')
@@ -1957,6 +1957,8 @@ spec:
                   
                   # Copy files to final destination for bash operator
                   if [[ "$operator" == "bash" ]]; then
+                    echo "⚙️ [PROCESS] Removing existing files..."
+                    gsutil rm -rf "gs://$GCP_BUCKET_NAME/dags/dbt/${DBT_PROJECT_NAME}_${GIT_BRANCH}/*" || true
                     echo "⚙️ [PROCESS] Copying files to final destination for bash operator..."
                     gsutil cp "/tmp/dbt_project_bash_operator/$folder/"* "gs://$GCP_BUCKET_NAME/dags/dbt/${DBT_PROJECT_NAME}_${GIT_BRANCH}"
                     echo "✅ [SUCCESS] Files copied to bash operator destination"
@@ -1993,6 +1995,9 @@ spec:
                     # Create destination directory if it doesn't exist
                     mkdir -p "$REPO_DIR/dags/dbt/${DBT_PROJECT_NAME}_${GIT_BRANCH}"
                     # Copy files to final destination
+                    echo "⚙️ [PROCESS] Removing existing files..."
+                    rm -rf "$REPO_DIR/dags/dbt/${DBT_PROJECT_NAME}_${GIT_BRANCH}/*" || true
+                    echo "⚙️ [PROCESS] Copying files to final destination for bash operator..."
                     cp -r "/tmp/dbt_project_bash_operator/$folder/"* "$REPO_DIR/dags/dbt/${DBT_PROJECT_NAME}_${GIT_BRANCH}"
                     echo "${operator,,}=$REPO_DIR/dags/dbt/${DBT_PROJECT_NAME}_${GIT_BRANCH}" >> /workdir/bash_operator_files_path.log
                     echo "✅ [SUCCESS] Files copied to bash operator destination"
