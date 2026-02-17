@@ -2384,7 +2384,10 @@ spec:
                 # Skip empty lines
                 [ -z "$line" ] && continue
                 # Check for actual error patterns
-                if echo "$line" | grep -Ei "error|fail|forbidden|denied" | grep -v "ERROR=0" | grep -v "errors.*\[\]" > /dev/null; then
+                if echo "$line" \
+                  | grep -Eiv "ERROR=0" \
+                  | grep -Eiw "error|fail|forbidden|denied" \
+                  > /dev/null; then
                   echo "❌ [ERROR] Error found in dbt refresh incremental modules procedure"
                   echo "📋 [CONFIG] Log file line: $line"
                   error_found=1

@@ -1,0 +1,1777 @@
+===========================================
+ðŸš€ [INFO] DBT Project Incremental Modules Refresh
+ðŸ“‹ [CONFIG] Environment: Main Branch
+ðŸ”— [CONFIG] Commit: 10df329
+===========================================
+===========================================
+âš™ï¸ [PROCESS] Processing folder: burga_shopify
+===========================================
+ðŸ“‹ [CONFIG] Setting up warehouse credentials...
+ðŸ” [CHECK] Configuring BigQuery credentials...
+âš™ï¸ [PROCESS] Activating BigQuery service account...
+Activated service account credentials for: [dbt-deploy@burga-ddp.iam.gserviceaccount.com]
+Updated property [core/project].
+âœ… [SUCCESS] BigQuery credentials configured
+ðŸ” [CHECK] Validating required environment variables...
+âœ… [SUCCESS] All required variables are defined
+âš™ï¸ [PROCESS] Importing variables from Airflow secret file...
+===========================================
+âš™ï¸ [PROCESS] Data Quality packages removal
+===========================================
+ðŸ” [CHECK] Checking for re-data package in packages.yml
+âš ï¸ [WARNING] Found re-data package, removing it...
+âœ… [SUCCESS] Successfully removed re-data package from packages.yml
+âš™ï¸ [PROCESS] Cleaning dbt project...
+âœ… [SUCCESS] DBT project cleanup completed
+âš™ï¸ [PROCESS] Copying incremental refresh script...
+===========================================
+ðŸš€ [INFO] Starting incremental refresh procedure
+ðŸ“‹ [CONFIG] Previous commit: bac327d490ad5c27a3640a50eda9839ba9db83b3
+===========================================
+2026-02-17 10:50:24 - Starting dbt incremental refresh test with dry-run: false
+2026-02-17 10:50:24 - Comparing current state with commit: bac327d490ad5c27a3640a50eda9839ba9db83b3
+2026-02-17 10:50:24 - Using model paths from dbt_project.yml: models
+2026-02-17 10:50:24 - Detecting changed SQL files...
+2026-02-17 10:50:24 - Detected 153 changed SQL files
+2026-02-17 10:50:24 - Running dbt deps to install dependencies...
+[0m10:50:26  Running with dbt=1.10.13
+[0m10:50:26  Updating lock file in file path: /workdir/src/burga_shopify/package-lock.yml
+[0m10:50:26  Installing yu-iskw/dbt_airflow_macros
+[0m10:50:26  Installed from version 0.3.0
+[0m10:50:26  Up to date!
+[0m10:50:26  Installing dbt-labs/dbt_utils
+[0m10:50:27  Installed from version 1.1.1
+[0m10:50:27  Updated version available: 1.3.3
+[0m10:50:27  Installing dbt-labs/codegen
+[0m10:50:27  Installed from version 0.14.0
+[0m10:50:27  Up to date!
+[0m10:50:27  
+[0m10:50:27  Updates available for packages: ['dbt-labs/dbt_utils']                 
+Update your versions in packages.yml, then run dbt deps
+2026-02-17 10:50:28 - Compiling dbt project to generate manifest...
+[0m10:50:29  Running with dbt=1.10.13
+[0m10:50:32  Registered adapter: bigquery=1.9.2
+[0m10:50:32  Unable to do partial parsing because saved manifest not found. Starting full parse.
+[0m10:50:38  [[33mWARNING[0m]: Configuration paths exist in your dbt_project.yml file which do not apply to any resources.
+There are 3 unused configuration paths:
+- models.re_data
+- models.re_data.internal
+- models.re_data.logs
+[0m10:50:38  Found 82 models, 3 analyses, 1 seed, 72 data tests, 242 sources, 683 macros
+[0m10:50:38  
+[0m10:50:38  Concurrency: 1 threads (target='sa')
+[0m10:50:38  
+2026-02-17 10:50:44 - Analyzing manifest to identify incremental models...
+2026-02-17 10:50:44 - Project name: burga_shopify
+2026-02-17 10:50:44 - Analyzing model: child_model
+2026-02-17 10:50:44 - Looking for node: model.burga_shopify.child_model
+2026-02-17 10:50:45 - Is incremental check result: false
+2026-02-17 10:50:45 - Model child_model is not incremental, skipping full-refresh
+2026-02-17 10:50:45 - Analyzing model: model_data_a
+2026-02-17 10:50:45 - Looking for node: model.burga_shopify.model_data_a
+2026-02-17 10:50:45 - Is incremental check result: false
+2026-02-17 10:50:45 - Model model_data_a is not incremental, skipping full-refresh
+2026-02-17 10:50:45 - Analyzing model: model_from_source
+2026-02-17 10:50:45 - Looking for node: model.burga_shopify.model_from_source
+2026-02-17 10:50:45 - Is incremental check result: false
+2026-02-17 10:50:45 - Model model_from_source is not incremental, skipping full-refresh
+2026-02-17 10:50:45 - Analyzing model: model_incremental
+2026-02-17 10:50:45 - Looking for node: model.burga_shopify.model_incremental
+2026-02-17 10:50:45 - Is incremental check result: false
+2026-02-17 10:50:45 - Model model_incremental is not incremental, skipping full-refresh
+2026-02-17 10:50:45 - Analyzing model: model_repeated
+2026-02-17 10:50:45 - Looking for node: model.burga_shopify.model_repeated
+2026-02-17 10:50:45 - Is incremental check result: false
+2026-02-17 10:50:45 - Model model_repeated is not incremental, skipping full-refresh
+2026-02-17 10:50:45 - Analyzing model: model_struct
+2026-02-17 10:50:45 - Looking for node: model.burga_shopify.model_struct
+2026-02-17 10:50:45 - Is incremental check result: false
+2026-02-17 10:50:45 - Model model_struct is not incremental, skipping full-refresh
+2026-02-17 10:50:45 - Analyzing model: model_without_any_ctes
+2026-02-17 10:50:45 - Looking for node: model.burga_shopify.model_without_any_ctes
+2026-02-17 10:50:46 - Is incremental check result: false
+2026-02-17 10:50:46 - Model model_without_any_ctes is not incremental, skipping full-refresh
+2026-02-17 10:50:46 - Analyzing model: model_without_import_ctes
+2026-02-17 10:50:46 - Looking for node: model.burga_shopify.model_without_import_ctes
+2026-02-17 10:50:46 - Is incremental check result: false
+2026-02-17 10:50:46 - Model model_without_import_ctes is not incremental, skipping full-refresh
+2026-02-17 10:50:46 - Analyzing model: test_generate_base_models
+2026-02-17 10:50:46 - Looking for node: model.burga_shopify.test_generate_base_models
+2026-02-17 10:50:46 - Is incremental check result: false
+2026-02-17 10:50:46 - Model test_generate_base_models is not incremental, skipping full-refresh
+2026-02-17 10:50:46 - Analyzing model: test_generate_base_models_all_args
+2026-02-17 10:50:46 - Looking for node: model.burga_shopify.test_generate_base_models_all_args
+2026-02-17 10:50:46 - Is incremental check result: false
+2026-02-17 10:50:46 - Model test_generate_base_models_all_args is not incremental, skipping full-refresh
+2026-02-17 10:50:46 - Analyzing model: test_generate_base_models_case_sensitive
+2026-02-17 10:50:46 - Looking for node: model.burga_shopify.test_generate_base_models_case_sensitive
+2026-02-17 10:50:46 - Is incremental check result: false
+2026-02-17 10:50:46 - Model test_generate_base_models_case_sensitive is not incremental, skipping full-refresh
+2026-02-17 10:50:46 - Analyzing model: test_generate_base_models_leading
+2026-02-17 10:50:46 - Looking for node: model.burga_shopify.test_generate_base_models_leading
+2026-02-17 10:50:46 - Is incremental check result: false
+2026-02-17 10:50:46 - Model test_generate_base_models_leading is not incremental, skipping full-refresh
+2026-02-17 10:50:46 - Analyzing model: test_generate_model_yaml_multiple_models
+2026-02-17 10:50:46 - Looking for node: model.burga_shopify.test_generate_model_yaml_multiple_models
+2026-02-17 10:50:47 - Is incremental check result: false
+2026-02-17 10:50:47 - Model test_generate_model_yaml_multiple_models is not incremental, skipping full-refresh
+2026-02-17 10:50:47 - Analyzing model: test_helper_get_models
+2026-02-17 10:50:47 - Looking for node: model.burga_shopify.test_helper_get_models
+2026-02-17 10:50:47 - Is incremental check result: false
+2026-02-17 10:50:47 - Model test_helper_get_models is not incremental, skipping full-refresh
+2026-02-17 10:50:47 - Analyzing model: create_base_models
+2026-02-17 10:50:47 - Looking for node: model.burga_shopify.create_base_models
+2026-02-17 10:50:47 - Is incremental check result: false
+2026-02-17 10:50:47 - Model create_base_models is not incremental, skipping full-refresh
+2026-02-17 10:50:47 - Analyzing model: test_macros
+2026-02-17 10:50:47 - Looking for node: model.burga_shopify.test_macros
+2026-02-17 10:50:47 - Is incremental check result: false
+2026-02-17 10:50:47 - Model test_macros is not incremental, skipping full-refresh
+2026-02-17 10:50:47 - Analyzing model: test_date_spine
+2026-02-17 10:50:47 - Looking for node: model.burga_shopify.test_date_spine
+2026-02-17 10:50:47 - Is incremental check result: false
+2026-02-17 10:50:47 - Model test_date_spine is not incremental, skipping full-refresh
+2026-02-17 10:50:47 - Analyzing model: recency_time_excluded
+2026-02-17 10:50:47 - Looking for node: model.burga_shopify.recency_time_excluded
+2026-02-17 10:50:47 - Is incremental check result: false
+2026-02-17 10:50:47 - Model recency_time_excluded is not incremental, skipping full-refresh
+2026-02-17 10:50:47 - Analyzing model: recency_time_included
+2026-02-17 10:50:47 - Looking for node: model.burga_shopify.recency_time_included
+2026-02-17 10:50:48 - Is incremental check result: false
+2026-02-17 10:50:48 - Model recency_time_included is not incremental, skipping full-refresh
+2026-02-17 10:50:48 - Analyzing model: test_equal_column_subset
+2026-02-17 10:50:48 - Looking for node: model.burga_shopify.test_equal_column_subset
+2026-02-17 10:50:48 - Is incremental check result: false
+2026-02-17 10:50:48 - Model test_equal_column_subset is not incremental, skipping full-refresh
+2026-02-17 10:50:48 - Analyzing model: test_equal_rowcount
+2026-02-17 10:50:48 - Looking for node: model.burga_shopify.test_equal_rowcount
+2026-02-17 10:50:48 - Is incremental check result: false
+2026-02-17 10:50:48 - Model test_equal_rowcount is not incremental, skipping full-refresh
+2026-02-17 10:50:48 - Analyzing model: test_fewer_rows_than
+2026-02-17 10:50:48 - Looking for node: model.burga_shopify.test_fewer_rows_than
+2026-02-17 10:50:48 - Is incremental check result: false
+2026-02-17 10:50:48 - Model test_fewer_rows_than is not incremental, skipping full-refresh
+2026-02-17 10:50:48 - Analyzing model: test_haversine_distance_km
+2026-02-17 10:50:48 - Looking for node: model.burga_shopify.test_haversine_distance_km
+2026-02-17 10:50:48 - Is incremental check result: false
+2026-02-17 10:50:48 - Model test_haversine_distance_km is not incremental, skipping full-refresh
+2026-02-17 10:50:48 - Analyzing model: test_haversine_distance_mi
+2026-02-17 10:50:48 - Looking for node: model.burga_shopify.test_haversine_distance_mi
+2026-02-17 10:50:49 - Is incremental check result: false
+2026-02-17 10:50:49 - Model test_haversine_distance_mi is not incremental, skipping full-refresh
+2026-02-17 10:50:49 - Analyzing model: test_deduplicate
+2026-02-17 10:50:49 - Looking for node: model.burga_shopify.test_deduplicate
+2026-02-17 10:50:49 - Is incremental check result: false
+2026-02-17 10:50:49 - Model test_deduplicate is not incremental, skipping full-refresh
+2026-02-17 10:50:49 - Analyzing model: test_generate_series
+2026-02-17 10:50:49 - Looking for node: model.burga_shopify.test_generate_series
+2026-02-17 10:50:49 - Is incremental check result: false
+2026-02-17 10:50:49 - Model test_generate_series is not incremental, skipping full-refresh
+2026-02-17 10:50:49 - Analyzing model: test_generate_surrogate_key
+2026-02-17 10:50:49 - Looking for node: model.burga_shopify.test_generate_surrogate_key
+2026-02-17 10:50:49 - Is incremental check result: false
+2026-02-17 10:50:49 - Model test_generate_surrogate_key is not incremental, skipping full-refresh
+2026-02-17 10:50:49 - Analyzing model: test_get_column_values
+2026-02-17 10:50:49 - Looking for node: model.burga_shopify.test_get_column_values
+2026-02-17 10:50:49 - Is incremental check result: false
+2026-02-17 10:50:49 - Model test_get_column_values is not incremental, skipping full-refresh
+2026-02-17 10:50:49 - Analyzing model: test_get_column_values_where
+2026-02-17 10:50:49 - Looking for node: model.burga_shopify.test_get_column_values_where
+2026-02-17 10:50:49 - Is incremental check result: false
+2026-02-17 10:50:49 - Model test_get_column_values_where is not incremental, skipping full-refresh
+2026-02-17 10:50:49 - Analyzing model: test_get_filtered_columns_in_relation
+2026-02-17 10:50:49 - Looking for node: model.burga_shopify.test_get_filtered_columns_in_relation
+2026-02-17 10:50:50 - Is incremental check result: false
+2026-02-17 10:50:50 - Model test_get_filtered_columns_in_relation is not incremental, skipping full-refresh
+2026-02-17 10:50:50 - Analyzing model: test_get_relations_by_pattern
+2026-02-17 10:50:50 - Looking for node: model.burga_shopify.test_get_relations_by_pattern
+2026-02-17 10:50:50 - Is incremental check result: false
+2026-02-17 10:50:50 - Model test_get_relations_by_pattern is not incremental, skipping full-refresh
+2026-02-17 10:50:50 - Analyzing model: test_get_relations_by_prefix_and_union
+2026-02-17 10:50:50 - Looking for node: model.burga_shopify.test_get_relations_by_prefix_and_union
+2026-02-17 10:50:50 - Is incremental check result: false
+2026-02-17 10:50:50 - Model test_get_relations_by_prefix_and_union is not incremental, skipping full-refresh
+2026-02-17 10:50:50 - Analyzing model: test_get_single_value
+2026-02-17 10:50:50 - Looking for node: model.burga_shopify.test_get_single_value
+2026-02-17 10:50:50 - Is incremental check result: false
+2026-02-17 10:50:50 - Model test_get_single_value is not incremental, skipping full-refresh
+2026-02-17 10:50:50 - Analyzing model: test_get_single_value_default
+2026-02-17 10:50:50 - Looking for node: model.burga_shopify.test_get_single_value_default
+2026-02-17 10:50:50 - Is incremental check result: false
+2026-02-17 10:50:50 - Model test_get_single_value_default is not incremental, skipping full-refresh
+2026-02-17 10:50:50 - Analyzing model: test_groupby
+2026-02-17 10:50:50 - Looking for node: model.burga_shopify.test_groupby
+2026-02-17 10:50:50 - Is incremental check result: false
+2026-02-17 10:50:50 - Model test_groupby is not incremental, skipping full-refresh
+2026-02-17 10:50:50 - Analyzing model: test_not_empty_string_failing
+2026-02-17 10:50:50 - Looking for node: model.burga_shopify.test_not_empty_string_failing
+2026-02-17 10:50:51 - Is incremental check result: false
+2026-02-17 10:50:51 - Model test_not_empty_string_failing is not incremental, skipping full-refresh
+2026-02-17 10:50:51 - Analyzing model: test_not_empty_string_passing
+2026-02-17 10:50:51 - Looking for node: model.burga_shopify.test_not_empty_string_passing
+2026-02-17 10:50:51 - Is incremental check result: false
+2026-02-17 10:50:51 - Model test_not_empty_string_passing is not incremental, skipping full-refresh
+2026-02-17 10:50:51 - Analyzing model: test_nullcheck_table
+2026-02-17 10:50:51 - Looking for node: model.burga_shopify.test_nullcheck_table
+2026-02-17 10:50:51 - Is incremental check result: false
+2026-02-17 10:50:51 - Model test_nullcheck_table is not incremental, skipping full-refresh
+2026-02-17 10:50:51 - Analyzing model: test_pivot
+2026-02-17 10:50:51 - Looking for node: model.burga_shopify.test_pivot
+2026-02-17 10:50:51 - Is incremental check result: false
+2026-02-17 10:50:51 - Model test_pivot is not incremental, skipping full-refresh
+2026-02-17 10:50:51 - Analyzing model: test_pivot_apostrophe
+2026-02-17 10:50:51 - Looking for node: model.burga_shopify.test_pivot_apostrophe
+2026-02-17 10:50:51 - Is incremental check result: false
+2026-02-17 10:50:51 - Model test_pivot_apostrophe is not incremental, skipping full-refresh
+2026-02-17 10:50:51 - Analyzing model: test_safe_add
+2026-02-17 10:50:51 - Looking for node: model.burga_shopify.test_safe_add
+2026-02-17 10:50:51 - Is incremental check result: false
+2026-02-17 10:50:51 - Model test_safe_add is not incremental, skipping full-refresh
+2026-02-17 10:50:51 - Analyzing model: test_safe_divide
+2026-02-17 10:50:51 - Looking for node: model.burga_shopify.test_safe_divide
+2026-02-17 10:50:52 - Is incremental check result: false
+2026-02-17 10:50:52 - Model test_safe_divide is not incremental, skipping full-refresh
+2026-02-17 10:50:52 - Analyzing model: test_safe_subtract
+2026-02-17 10:50:52 - Looking for node: model.burga_shopify.test_safe_subtract
+2026-02-17 10:50:52 - Is incremental check result: false
+2026-02-17 10:50:52 - Model test_safe_subtract is not incremental, skipping full-refresh
+2026-02-17 10:50:52 - Analyzing model: test_star
+2026-02-17 10:50:52 - Looking for node: model.burga_shopify.test_star
+2026-02-17 10:50:52 - Is incremental check result: false
+2026-02-17 10:50:52 - Model test_star is not incremental, skipping full-refresh
+2026-02-17 10:50:52 - Analyzing model: test_star_aggregate
+2026-02-17 10:50:52 - Looking for node: model.burga_shopify.test_star_aggregate
+2026-02-17 10:50:52 - Is incremental check result: false
+2026-02-17 10:50:52 - Model test_star_aggregate is not incremental, skipping full-refresh
+2026-02-17 10:50:52 - Analyzing model: test_star_no_columns
+2026-02-17 10:50:52 - Looking for node: model.burga_shopify.test_star_no_columns
+2026-02-17 10:50:52 - Is incremental check result: false
+2026-02-17 10:50:52 - Model test_star_no_columns is not incremental, skipping full-refresh
+2026-02-17 10:50:52 - Analyzing model: test_star_prefix_suffix
+2026-02-17 10:50:52 - Looking for node: model.burga_shopify.test_star_prefix_suffix
+2026-02-17 10:50:52 - Is incremental check result: false
+2026-02-17 10:50:52 - Model test_star_prefix_suffix is not incremental, skipping full-refresh
+2026-02-17 10:50:53 - Analyzing model: test_star_quote_identifiers
+2026-02-17 10:50:53 - Looking for node: model.burga_shopify.test_star_quote_identifiers
+2026-02-17 10:50:53 - Is incremental check result: false
+2026-02-17 10:50:53 - Model test_star_quote_identifiers is not incremental, skipping full-refresh
+2026-02-17 10:50:53 - Analyzing model: test_star_uppercase
+2026-02-17 10:50:53 - Looking for node: model.burga_shopify.test_star_uppercase
+2026-02-17 10:50:53 - Is incremental check result: false
+2026-02-17 10:50:53 - Model test_star_uppercase is not incremental, skipping full-refresh
+2026-02-17 10:50:53 - Analyzing model: test_union
+2026-02-17 10:50:53 - Looking for node: model.burga_shopify.test_union
+2026-02-17 10:50:53 - Is incremental check result: false
+2026-02-17 10:50:53 - Model test_union is not incremental, skipping full-refresh
+2026-02-17 10:50:53 - Analyzing model: test_union_base
+2026-02-17 10:50:53 - Looking for node: model.burga_shopify.test_union_base
+2026-02-17 10:50:53 - Is incremental check result: false
+2026-02-17 10:50:53 - Model test_union_base is not incremental, skipping full-refresh
+2026-02-17 10:50:53 - Analyzing model: test_union_exclude_base_lowercase
+2026-02-17 10:50:53 - Looking for node: model.burga_shopify.test_union_exclude_base_lowercase
+2026-02-17 10:50:53 - Is incremental check result: false
+2026-02-17 10:50:53 - Model test_union_exclude_base_lowercase is not incremental, skipping full-refresh
+2026-02-17 10:50:53 - Analyzing model: test_union_exclude_base_uppercase
+2026-02-17 10:50:53 - Looking for node: model.burga_shopify.test_union_exclude_base_uppercase
+2026-02-17 10:50:54 - Is incremental check result: false
+2026-02-17 10:50:54 - Model test_union_exclude_base_uppercase is not incremental, skipping full-refresh
+2026-02-17 10:50:54 - Analyzing model: test_union_exclude_lowercase
+2026-02-17 10:50:54 - Looking for node: model.burga_shopify.test_union_exclude_lowercase
+2026-02-17 10:50:54 - Is incremental check result: false
+2026-02-17 10:50:54 - Model test_union_exclude_lowercase is not incremental, skipping full-refresh
+2026-02-17 10:50:54 - Analyzing model: test_union_exclude_uppercase
+2026-02-17 10:50:54 - Looking for node: model.burga_shopify.test_union_exclude_uppercase
+2026-02-17 10:50:54 - Is incremental check result: false
+2026-02-17 10:50:54 - Model test_union_exclude_uppercase is not incremental, skipping full-refresh
+2026-02-17 10:50:54 - Analyzing model: test_union_no_source_column
+2026-02-17 10:50:54 - Looking for node: model.burga_shopify.test_union_no_source_column
+2026-02-17 10:50:54 - Is incremental check result: false
+2026-02-17 10:50:54 - Model test_union_no_source_column is not incremental, skipping full-refresh
+2026-02-17 10:50:54 - Analyzing model: test_union_where
+2026-02-17 10:50:54 - Looking for node: model.burga_shopify.test_union_where
+2026-02-17 10:50:54 - Is incremental check result: false
+2026-02-17 10:50:54 - Model test_union_where is not incremental, skipping full-refresh
+2026-02-17 10:50:54 - Analyzing model: test_union_where_base
+2026-02-17 10:50:54 - Looking for node: model.burga_shopify.test_union_where_base
+2026-02-17 10:50:54 - Is incremental check result: false
+2026-02-17 10:50:54 - Model test_union_where_base is not incremental, skipping full-refresh
+2026-02-17 10:50:54 - Analyzing model: test_unpivot
+2026-02-17 10:50:54 - Looking for node: model.burga_shopify.test_unpivot
+2026-02-17 10:50:55 - Is incremental check result: false
+2026-02-17 10:50:55 - Model test_unpivot is not incremental, skipping full-refresh
+2026-02-17 10:50:55 - Analyzing model: test_unpivot_bool
+2026-02-17 10:50:55 - Looking for node: model.burga_shopify.test_unpivot_bool
+2026-02-17 10:50:55 - Is incremental check result: false
+2026-02-17 10:50:55 - Model test_unpivot_bool is not incremental, skipping full-refresh
+2026-02-17 10:50:55 - Analyzing model: test_width_bucket
+2026-02-17 10:50:55 - Looking for node: model.burga_shopify.test_width_bucket
+2026-02-17 10:50:55 - Is incremental check result: false
+2026-02-17 10:50:55 - Model test_width_bucket is not incremental, skipping full-refresh
+2026-02-17 10:50:55 - Analyzing model: test_url_host
+2026-02-17 10:50:55 - Looking for node: model.burga_shopify.test_url_host
+2026-02-17 10:50:55 - Is incremental check result: false
+2026-02-17 10:50:55 - Model test_url_host is not incremental, skipping full-refresh
+2026-02-17 10:50:55 - Analyzing model: test_url_path
+2026-02-17 10:50:55 - Looking for node: model.burga_shopify.test_url_path
+2026-02-17 10:50:55 - Is incremental check result: false
+2026-02-17 10:50:55 - Model test_url_path is not incremental, skipping full-refresh
+2026-02-17 10:50:55 - Analyzing model: test_urls
+2026-02-17 10:50:55 - Looking for node: model.burga_shopify.test_urls
+2026-02-17 10:50:55 - Is incremental check result: false
+2026-02-17 10:50:55 - Model test_urls is not incremental, skipping full-refresh
+2026-02-17 10:50:55 - Analyzing model: test_re_data_anomalies
+2026-02-17 10:50:55 - Looking for node: model.burga_shopify.test_re_data_anomalies
+2026-02-17 10:50:56 - Is incremental check result: false
+2026-02-17 10:50:56 - Model test_re_data_anomalies is not incremental, skipping full-refresh
+2026-02-17 10:50:56 - Analyzing model: test_re_data_metrics
+2026-02-17 10:50:56 - Looking for node: model.burga_shopify.test_re_data_metrics
+2026-02-17 10:50:56 - Is incremental check result: false
+2026-02-17 10:50:56 - Model test_re_data_metrics is not incremental, skipping full-refresh
+2026-02-17 10:50:56 - Analyzing model: test_re_data_table_samples
+2026-02-17 10:50:56 - Looking for node: model.burga_shopify.test_re_data_table_samples
+2026-02-17 10:50:56 - Is incremental check result: false
+2026-02-17 10:50:56 - Model test_re_data_table_samples is not incremental, skipping full-refresh
+2026-02-17 10:50:56 - Analyzing model: test_re_data_test_history
+2026-02-17 10:50:56 - Looking for node: model.burga_shopify.test_re_data_test_history
+2026-02-17 10:50:56 - Is incremental check result: false
+2026-02-17 10:50:56 - Model test_re_data_test_history is not incremental, skipping full-refresh
+2026-02-17 10:50:56 - Analyzing model: test_re_data_z_score
+2026-02-17 10:50:56 - Looking for node: model.burga_shopify.test_re_data_z_score
+2026-02-17 10:50:56 - Is incremental check result: false
+2026-02-17 10:50:56 - Model test_re_data_z_score is not incremental, skipping full-refresh
+2026-02-17 10:50:56 - Analyzing model: sanitized_user_data
+2026-02-17 10:50:56 - Looking for node: model.burga_shopify.sanitized_user_data
+2026-02-17 10:50:56 - Is incremental check result: false
+2026-02-17 10:50:56 - Model sanitized_user_data is not incremental, skipping full-refresh
+2026-02-17 10:50:56 - Analyzing model: deduplicated
+2026-02-17 10:50:56 - Looking for node: model.burga_shopify.deduplicated
+2026-02-17 10:50:57 - Is incremental check result: false
+2026-02-17 10:50:57 - Model deduplicated is not incremental, skipping full-refresh
+2026-02-17 10:50:57 - Analyzing model: duplicates
+2026-02-17 10:50:57 - Looking for node: model.burga_shopify.duplicates
+2026-02-17 10:50:57 - Is incremental check result: false
+2026-02-17 10:50:57 - Model duplicates is not incremental, skipping full-refresh
+2026-02-17 10:50:57 - Analyzing model: us_states_normalized
+2026-02-17 10:50:57 - Looking for node: model.burga_shopify.us_states_normalized
+2026-02-17 10:50:57 - Is incremental check result: false
+2026-02-17 10:50:57 - Model us_states_normalized is not incremental, skipping full-refresh
+2026-02-17 10:50:57 - Analyzing model: validated_date_and_time
+2026-02-17 10:50:57 - Looking for node: model.burga_shopify.validated_date_and_time
+2026-02-17 10:50:57 - Is incremental check result: false
+2026-02-17 10:50:57 - Model validated_date_and_time is not incremental, skipping full-refresh
+2026-02-17 10:50:57 - Analyzing model: validated_emails
+2026-02-17 10:50:57 - Looking for node: model.burga_shopify.validated_emails
+2026-02-17 10:50:57 - Is incremental check result: false
+2026-02-17 10:50:57 - Model validated_emails is not incremental, skipping full-refresh
+2026-02-17 10:50:57 - Analyzing model: validated_ips
+2026-02-17 10:50:57 - Looking for node: model.burga_shopify.validated_ips
+2026-02-17 10:50:57 - Is incremental check result: false
+2026-02-17 10:50:57 - Model validated_ips is not incremental, skipping full-refresh
+2026-02-17 10:50:57 - Analyzing model: validated_numbers
+2026-02-17 10:50:57 - Looking for node: model.burga_shopify.validated_numbers
+2026-02-17 10:50:58 - Is incremental check result: false
+2026-02-17 10:50:58 - Model validated_numbers is not incremental, skipping full-refresh
+2026-02-17 10:50:58 - Analyzing model: validated_uuids
+2026-02-17 10:50:58 - Looking for node: model.burga_shopify.validated_uuids
+2026-02-17 10:50:58 - Is incremental check result: false
+2026-02-17 10:50:58 - Model validated_uuids is not incremental, skipping full-refresh
+2026-02-17 10:50:58 - Analyzing model: buy_events
+2026-02-17 10:50:58 - Looking for node: model.burga_shopify.buy_events
+2026-02-17 10:50:58 - Is incremental check result: false
+2026-02-17 10:50:58 - Model buy_events is not incremental, skipping full-refresh
+2026-02-17 10:50:58 - Analyzing model: re_data_alerts
+2026-02-17 10:50:58 - Looking for node: model.burga_shopify.re_data_alerts
+2026-02-17 10:50:58 - Is incremental check result: false
+2026-02-17 10:50:58 - Model re_data_alerts is not incremental, skipping full-refresh
+2026-02-17 10:50:58 - Analyzing model: re_data_anomalies
+2026-02-17 10:50:58 - Looking for node: model.burga_shopify.re_data_anomalies
+2026-02-17 10:50:58 - Is incremental check result: false
+2026-02-17 10:50:58 - Model re_data_anomalies is not incremental, skipping full-refresh
+2026-02-17 10:50:58 - Analyzing model: re_data_schema_changes
+2026-02-17 10:50:58 - Looking for node: model.burga_shopify.re_data_schema_changes
+2026-02-17 10:50:59 - Is incremental check result: false
+2026-02-17 10:50:59 - Model re_data_schema_changes is not incremental, skipping full-refresh
+2026-02-17 10:50:59 - Analyzing model: re_data_test_runs
+2026-02-17 10:50:59 - Looking for node: model.burga_shopify.re_data_test_runs
+2026-02-17 10:50:59 - Is incremental check result: false
+2026-02-17 10:50:59 - Model re_data_test_runs is not incremental, skipping full-refresh
+2026-02-17 10:50:59 - Analyzing model: re_data_z_score
+2026-02-17 10:50:59 - Looking for node: model.burga_shopify.re_data_z_score
+2026-02-17 10:50:59 - Is incremental check result: false
+2026-02-17 10:50:59 - Model re_data_z_score is not incremental, skipping full-refresh
+2026-02-17 10:50:59 - Analyzing model: re_data_last_base_metrics_part0
+2026-02-17 10:50:59 - Looking for node: model.burga_shopify.re_data_last_base_metrics_part0
+2026-02-17 10:50:59 - Is incremental check result: false
+2026-02-17 10:50:59 - Model re_data_last_base_metrics_part0 is not incremental, skipping full-refresh
+2026-02-17 10:50:59 - Analyzing model: re_data_last_base_metrics_part1
+2026-02-17 10:50:59 - Looking for node: model.burga_shopify.re_data_last_base_metrics_part1
+2026-02-17 10:50:59 - Is incremental check result: false
+2026-02-17 10:50:59 - Model re_data_last_base_metrics_part1 is not incremental, skipping full-refresh
+2026-02-17 10:50:59 - Analyzing model: re_data_last_base_metrics_part2
+2026-02-17 10:50:59 - Looking for node: model.burga_shopify.re_data_last_base_metrics_part2
+2026-02-17 10:50:59 - Is incremental check result: false
+2026-02-17 10:50:59 - Model re_data_last_base_metrics_part2 is not incremental, skipping full-refresh
+2026-02-17 10:50:59 - Analyzing model: re_data_last_base_metrics_part3
+2026-02-17 10:50:59 - Looking for node: model.burga_shopify.re_data_last_base_metrics_part3
+2026-02-17 10:51:00 - Is incremental check result: false
+2026-02-17 10:51:00 - Model re_data_last_base_metrics_part3 is not incremental, skipping full-refresh
+2026-02-17 10:51:00 - Analyzing model: re_data_last_base_metrics_thread0
+2026-02-17 10:51:00 - Looking for node: model.burga_shopify.re_data_last_base_metrics_thread0
+2026-02-17 10:51:00 - Is incremental check result: false
+2026-02-17 10:51:00 - Model re_data_last_base_metrics_thread0 is not incremental, skipping full-refresh
+2026-02-17 10:51:00 - Analyzing model: re_data_last_base_metrics_thread1
+2026-02-17 10:51:00 - Looking for node: model.burga_shopify.re_data_last_base_metrics_thread1
+2026-02-17 10:51:00 - Is incremental check result: false
+2026-02-17 10:51:00 - Model re_data_last_base_metrics_thread1 is not incremental, skipping full-refresh
+2026-02-17 10:51:00 - Analyzing model: re_data_last_base_metrics_thread2
+2026-02-17 10:51:00 - Looking for node: model.burga_shopify.re_data_last_base_metrics_thread2
+2026-02-17 10:51:00 - Is incremental check result: false
+2026-02-17 10:51:00 - Model re_data_last_base_metrics_thread2 is not incremental, skipping full-refresh
+2026-02-17 10:51:00 - Analyzing model: re_data_last_base_metrics_thread3
+2026-02-17 10:51:00 - Looking for node: model.burga_shopify.re_data_last_base_metrics_thread3
+2026-02-17 10:51:00 - Is incremental check result: false
+2026-02-17 10:51:00 - Model re_data_last_base_metrics_thread3 is not incremental, skipping full-refresh
+2026-02-17 10:51:00 - Analyzing model: re_data_run_started_at
+2026-02-17 10:51:00 - Looking for node: model.burga_shopify.re_data_run_started_at
+2026-02-17 10:51:00 - Is incremental check result: false
+2026-02-17 10:51:00 - Model re_data_run_started_at is not incremental, skipping full-refresh
+2026-02-17 10:51:00 - Analyzing model: re_data_last_table_samples
+2026-02-17 10:51:00 - Looking for node: model.burga_shopify.re_data_last_table_samples
+2026-02-17 10:51:01 - Is incremental check result: false
+2026-02-17 10:51:01 - Model re_data_last_table_samples is not incremental, skipping full-refresh
+2026-02-17 10:51:01 - Analyzing model: re_data_last_table_samples_part
+2026-02-17 10:51:01 - Looking for node: model.burga_shopify.re_data_last_table_samples_part
+2026-02-17 10:51:01 - Is incremental check result: false
+2026-02-17 10:51:01 - Model re_data_last_table_samples_part is not incremental, skipping full-refresh
+2026-02-17 10:51:01 - Analyzing model: re_data_columns
+2026-02-17 10:51:01 - Looking for node: model.burga_shopify.re_data_columns
+2026-02-17 10:51:01 - Is incremental check result: false
+2026-02-17 10:51:01 - Model re_data_columns is not incremental, skipping full-refresh
+2026-02-17 10:51:01 - Analyzing model: re_data_monitored
+2026-02-17 10:51:01 - Looking for node: model.burga_shopify.re_data_monitored
+2026-02-17 10:51:01 - Is incremental check result: false
+2026-02-17 10:51:01 - Model re_data_monitored is not incremental, skipping full-refresh
+2026-02-17 10:51:01 - Analyzing model: re_data_selected
+2026-02-17 10:51:01 - Looking for node: model.burga_shopify.re_data_selected
+2026-02-17 10:51:01 - Is incremental check result: false
+2026-02-17 10:51:01 - Model re_data_selected is not incremental, skipping full-refresh
+2026-02-17 10:51:01 - Analyzing model: re_data_metrics
+2026-02-17 10:51:01 - Looking for node: model.burga_shopify.re_data_metrics
+2026-02-17 10:51:01 - Is incremental check result: false
+2026-02-17 10:51:01 - Model re_data_metrics is not incremental, skipping full-refresh
+2026-02-17 10:51:01 - Analyzing model: re_data_last_metrics
+2026-02-17 10:51:01 - Looking for node: model.burga_shopify.re_data_last_metrics
+2026-02-17 10:51:02 - Is incremental check result: false
+2026-02-17 10:51:02 - Model re_data_last_metrics is not incremental, skipping full-refresh
+2026-02-17 10:51:02 - Analyzing model: re_data_last_stats
+2026-02-17 10:51:02 - Looking for node: model.burga_shopify.re_data_last_stats
+2026-02-17 10:51:02 - Is incremental check result: false
+2026-02-17 10:51:02 - Model re_data_last_stats is not incremental, skipping full-refresh
+2026-02-17 10:51:02 - Analyzing model: re_data_base_metrics
+2026-02-17 10:51:02 - Looking for node: model.burga_shopify.re_data_base_metrics
+2026-02-17 10:51:02 - Is incremental check result: false
+2026-02-17 10:51:02 - Model re_data_base_metrics is not incremental, skipping full-refresh
+2026-02-17 10:51:02 - Analyzing model: re_data_table_samples
+2026-02-17 10:51:02 - Looking for node: model.burga_shopify.re_data_table_samples
+2026-02-17 10:51:02 - Is incremental check result: false
+2026-02-17 10:51:02 - Model re_data_table_samples is not incremental, skipping full-refresh
+2026-02-17 10:51:02 - Analyzing model: re_data_columns_over_time
+2026-02-17 10:51:02 - Looking for node: model.burga_shopify.re_data_columns_over_time
+2026-02-17 10:51:02 - Is incremental check result: false
+2026-02-17 10:51:02 - Model re_data_columns_over_time is not incremental, skipping full-refresh
+2026-02-17 10:51:02 - Analyzing model: int_couriers_kolosus
+2026-02-17 10:51:02 - Looking for node: model.burga_shopify.int_couriers_kolosus
+2026-02-17 10:51:02 - Is incremental check result: false
+2026-02-17 10:51:02 - Model int_couriers_kolosus is not incremental, skipping full-refresh
+2026-02-17 10:51:02 - Analyzing model: int_qa
+2026-02-17 10:51:02 - Looking for node: model.burga_shopify.int_qa
+2026-02-17 10:51:03 - Is incremental check result: false
+2026-02-17 10:51:03 - Model int_qa is not incremental, skipping full-refresh
+2026-02-17 10:51:03 - Analyzing model: int_influencers_historical_report
+2026-02-17 10:51:03 - Looking for node: model.burga_shopify.int_influencers_historical_report
+2026-02-17 10:51:03 - Is incremental check result: true
+2026-02-17 10:51:03 - Found incremental model: int_influencers_historical_report
+2026-02-17 10:51:03 - Analyzing model: int_shopify_orders
+2026-02-17 10:51:03 - Looking for node: model.burga_shopify.int_shopify_orders
+2026-02-17 10:51:03 - Is incremental check result: false
+2026-02-17 10:51:03 - Model int_shopify_orders is not incremental, skipping full-refresh
+2026-02-17 10:51:03 - Analyzing model: int_shopify_refunds_line_items
+2026-02-17 10:51:03 - Looking for node: model.burga_shopify.int_shopify_refunds_line_items
+2026-02-17 10:51:03 - Is incremental check result: false
+2026-02-17 10:51:03 - Model int_shopify_refunds_line_items is not incremental, skipping full-refresh
+2026-02-17 10:51:03 - Analyzing model: int_shopify_shipping
+2026-02-17 10:51:03 - Looking for node: model.burga_shopify.int_shopify_shipping
+2026-02-17 10:51:03 - Is incremental check result: false
+2026-02-17 10:51:03 - Model int_shopify_shipping is not incremental, skipping full-refresh
+2026-02-17 10:51:03 - Analyzing model: int_shopify_tax_lines
+2026-02-17 10:51:03 - Looking for node: model.burga_shopify.int_shopify_tax_lines
+2026-02-17 10:51:04 - Is incremental check result: false
+2026-02-17 10:51:04 - Model int_shopify_tax_lines is not incremental, skipping full-refresh
+2026-02-17 10:51:04 - Analyzing model: applovin_ads_performance
+2026-02-17 10:51:04 - Looking for node: model.burga_shopify.applovin_ads_performance
+2026-02-17 10:51:04 - Is incremental check result: false
+2026-02-17 10:51:04 - Model applovin_ads_performance is not incremental, skipping full-refresh
+2026-02-17 10:51:04 - Analyzing model: bing_ads_performance
+2026-02-17 10:51:04 - Looking for node: model.burga_shopify.bing_ads_performance
+2026-02-17 10:51:04 - Is incremental check result: false
+2026-02-17 10:51:04 - Model bing_ads_performance is not incremental, skipping full-refresh
+2026-02-17 10:51:04 - Analyzing model: facebook_ads_performance
+2026-02-17 10:51:04 - Looking for node: model.burga_shopify.facebook_ads_performance
+2026-02-17 10:51:04 - Is incremental check result: false
+2026-02-17 10:51:04 - Model facebook_ads_performance is not incremental, skipping full-refresh
+2026-02-17 10:51:04 - Analyzing model: pinterest_ads_performance
+2026-02-17 10:51:04 - Looking for node: model.burga_shopify.pinterest_ads_performance
+2026-02-17 10:51:04 - Is incremental check result: false
+2026-02-17 10:51:04 - Model pinterest_ads_performance is not incremental, skipping full-refresh
+2026-02-17 10:51:04 - Analyzing model: snapchat_ads_performance
+2026-02-17 10:51:04 - Looking for node: model.burga_shopify.snapchat_ads_performance
+2026-02-17 10:51:04 - Is incremental check result: false
+2026-02-17 10:51:04 - Model snapchat_ads_performance is not incremental, skipping full-refresh
+2026-02-17 10:51:04 - Analyzing model: tiktok_ads_performance
+2026-02-17 10:51:04 - Looking for node: model.burga_shopify.tiktok_ads_performance
+2026-02-17 10:51:05 - Is incremental check result: false
+2026-02-17 10:51:05 - Model tiktok_ads_performance is not incremental, skipping full-refresh
+2026-02-17 10:51:05 - Analyzing model: marketing_influencers_summary
+2026-02-17 10:51:05 - Looking for node: model.burga_shopify.marketing_influencers_summary
+2026-02-17 10:51:05 - Is incremental check result: false
+2026-02-17 10:51:05 - Model marketing_influencers_summary is not incremental, skipping full-refresh
+2026-02-17 10:51:05 - Analyzing model: shopify_orders
+2026-02-17 10:51:05 - Looking for node: model.burga_shopify.shopify_orders
+2026-02-17 10:51:05 - Is incremental check result: true
+2026-02-17 10:51:05 - Found incremental model: shopify_orders
+2026-02-17 10:51:05 - Analyzing model: shopify_refund_items
+2026-02-17 10:51:05 - Looking for node: model.burga_shopify.shopify_refund_items
+2026-02-17 10:51:05 - Is incremental check result: true
+2026-02-17 10:51:05 - Found incremental model: shopify_refund_items
+2026-02-17 10:51:05 - Analyzing model: shopify_refund_orders
+2026-02-17 10:51:05 - Looking for node: model.burga_shopify.shopify_refund_orders
+2026-02-17 10:51:05 - Is incremental check result: true
+2026-02-17 10:51:05 - Found incremental model: shopify_refund_orders
+2026-02-17 10:51:05 - Analyzing model: shopify_transactions
+2026-02-17 10:51:05 - Looking for node: model.burga_shopify.shopify_transactions
+2026-02-17 10:51:05 - Is incremental check result: true
+2026-02-17 10:51:05 - Found incremental model: shopify_transactions
+2026-02-17 10:51:05 - Analyzing model: refund_items_bc
+2026-02-17 10:51:05 - Looking for node: model.burga_shopify.refund_items_bc
+2026-02-17 10:51:06 - Is incremental check result: true
+2026-02-17 10:51:06 - Found incremental model: refund_items_bc
+2026-02-17 10:51:06 - Analyzing model: refund_orders_bc
+2026-02-17 10:51:06 - Looking for node: model.burga_shopify.refund_orders_bc
+2026-02-17 10:51:06 - Is incremental check result: true
+2026-02-17 10:51:06 - Found incremental model: refund_orders_bc
+2026-02-17 10:51:06 - Analyzing model: finance_gift_card_sales
+2026-02-17 10:51:06 - Looking for node: model.burga_shopify.finance_gift_card_sales
+2026-02-17 10:51:06 - Is incremental check result: true
+2026-02-17 10:51:06 - Found incremental model: finance_gift_card_sales
+2026-02-17 10:51:06 - Analyzing model: finance_gift_card_usage
+2026-02-17 10:51:06 - Looking for node: model.burga_shopify.finance_gift_card_usage
+2026-02-17 10:51:06 - Is incremental check result: true
+2026-02-17 10:51:06 - Found incremental model: finance_gift_card_usage
+2026-02-17 10:51:06 - Analyzing model: finance_orders
+2026-02-17 10:51:06 - Looking for node: model.burga_shopify.finance_orders
+2026-02-17 10:51:06 - Is incremental check result: true
+2026-02-17 10:51:06 - Found incremental model: finance_orders
+2026-02-17 10:51:06 - Analyzing model: stg_all_couriers
+2026-02-17 10:51:06 - Looking for node: model.burga_shopify.stg_all_couriers
+2026-02-17 10:51:06 - Is incremental check result: false
+2026-02-17 10:51:06 - Model stg_all_couriers is not incremental, skipping full-refresh
+2026-02-17 10:51:06 - Analyzing model: stg_mes_inventory
+2026-02-17 10:51:06 - Looking for node: model.burga_shopify.stg_mes_inventory
+2026-02-17 10:51:07 - Is incremental check result: false
+2026-02-17 10:51:07 - Model stg_mes_inventory is not incremental, skipping full-refresh
+2026-02-17 10:51:07 - Analyzing model: stg_kolosus_orders
+2026-02-17 10:51:07 - Looking for node: model.burga_shopify.stg_kolosus_orders
+2026-02-17 10:51:07 - Is incremental check result: false
+2026-02-17 10:51:07 - Model stg_kolosus_orders is not incremental, skipping full-refresh
+2026-02-17 10:51:07 - Analyzing model: stg_kolosus_shippments
+2026-02-17 10:51:07 - Looking for node: model.burga_shopify.stg_kolosus_shippments
+2026-02-17 10:51:07 - Is incremental check result: false
+2026-02-17 10:51:07 - Model stg_kolosus_shippments is not incremental, skipping full-refresh
+2026-02-17 10:51:07 - Analyzing model: stg_mappings_canada_tax_rates
+2026-02-17 10:51:07 - Looking for node: model.burga_shopify.stg_mappings_canada_tax_rates
+2026-02-17 10:51:07 - Is incremental check result: false
+2026-02-17 10:51:07 - Model stg_mappings_canada_tax_rates is not incremental, skipping full-refresh
+2026-02-17 10:51:07 - Analyzing model: stg_mappings_usa_sales_tax
+2026-02-17 10:51:07 - Looking for node: model.burga_shopify.stg_mappings_usa_sales_tax
+2026-02-17 10:51:07 - Is incremental check result: false
+2026-02-17 10:51:07 - Model stg_mappings_usa_sales_tax is not incremental, skipping full-refresh
+2026-02-17 10:51:07 - Analyzing model: stg_mappings_vat_rates
+2026-02-17 10:51:07 - Looking for node: model.burga_shopify.stg_mappings_vat_rates
+2026-02-17 10:51:07 - Is incremental check result: false
+2026-02-17 10:51:07 - Model stg_mappings_vat_rates is not incremental, skipping full-refresh
+2026-02-17 10:51:07 - Analyzing model: stg_influencers_archive_daily_report
+2026-02-17 10:51:07 - Looking for node: model.burga_shopify.stg_influencers_archive_daily_report
+2026-02-17 10:51:08 - Is incremental check result: true
+2026-02-17 10:51:08 - Found incremental model: stg_influencers_archive_daily_report
+2026-02-17 10:51:08 - Analyzing model: stg_influencers_daily_report
+2026-02-17 10:51:08 - Looking for node: model.burga_shopify.stg_influencers_daily_report
+2026-02-17 10:51:08 - Is incremental check result: true
+2026-02-17 10:51:08 - Found incremental model: stg_influencers_daily_report
+2026-02-17 10:51:08 - Analyzing model: stg_questions
+2026-02-17 10:51:08 - Looking for node: model.burga_shopify.stg_questions
+2026-02-17 10:51:08 - Is incremental check result: true
+2026-02-17 10:51:08 - Found incremental model: stg_questions
+2026-02-17 10:51:08 - Analyzing model: stg_responses
+2026-02-17 10:51:08 - Looking for node: model.burga_shopify.stg_responses
+2026-02-17 10:51:08 - Is incremental check result: true
+2026-02-17 10:51:08 - Found incremental model: stg_responses
+2026-02-17 10:51:08 - Analyzing model: stg_mes_inventory_sku
+2026-02-17 10:51:08 - Looking for node: model.burga_shopify.stg_mes_inventory_sku
+2026-02-17 10:51:08 - Is incremental check result: false
+2026-02-17 10:51:08 - Model stg_mes_inventory_sku is not incremental, skipping full-refresh
+2026-02-17 10:51:08 - Analyzing model: stg_discount_applications
+2026-02-17 10:51:08 - Looking for node: model.burga_shopify.stg_discount_applications
+2026-02-17 10:51:09 - Is incremental check result: false
+2026-02-17 10:51:09 - Model stg_discount_applications is not incremental, skipping full-refresh
+2026-02-17 10:51:09 - Analyzing model: stg_fulfillment_line_items
+2026-02-17 10:51:09 - Looking for node: model.burga_shopify.stg_fulfillment_line_items
+2026-02-17 10:51:09 - Is incremental check result: false
+2026-02-17 10:51:09 - Model stg_fulfillment_line_items is not incremental, skipping full-refresh
+2026-02-17 10:51:09 - Analyzing model: stg_gift_cards
+2026-02-17 10:51:09 - Looking for node: model.burga_shopify.stg_gift_cards
+2026-02-17 10:51:09 - Is incremental check result: false
+2026-02-17 10:51:09 - Model stg_gift_cards is not incremental, skipping full-refresh
+2026-02-17 10:51:09 - Analyzing model: stg_line_item_discount_allocations
+2026-02-17 10:51:09 - Looking for node: model.burga_shopify.stg_line_item_discount_allocations
+2026-02-17 10:51:09 - Is incremental check result: false
+2026-02-17 10:51:09 - Model stg_line_item_discount_allocations is not incremental, skipping full-refresh
+2026-02-17 10:51:09 - Analyzing model: stg_line_item_tax_lines
+2026-02-17 10:51:09 - Looking for node: model.burga_shopify.stg_line_item_tax_lines
+2026-02-17 10:51:09 - Is incremental check result: false
+2026-02-17 10:51:09 - Model stg_line_item_tax_lines is not incremental, skipping full-refresh
+2026-02-17 10:51:09 - Analyzing model: stg_line_items
+2026-02-17 10:51:09 - Looking for node: model.burga_shopify.stg_line_items
+2026-02-17 10:51:09 - Is incremental check result: false
+2026-02-17 10:51:09 - Model stg_line_items is not incremental, skipping full-refresh
+2026-02-17 10:51:09 - Analyzing model: stg_orders
+2026-02-17 10:51:09 - Looking for node: model.burga_shopify.stg_orders
+2026-02-17 10:51:10 - Is incremental check result: false
+2026-02-17 10:51:10 - Model stg_orders is not incremental, skipping full-refresh
+2026-02-17 10:51:10 - Analyzing model: stg_products
+2026-02-17 10:51:10 - Looking for node: model.burga_shopify.stg_products
+2026-02-17 10:51:10 - Is incremental check result: false
+2026-02-17 10:51:10 - Model stg_products is not incremental, skipping full-refresh
+2026-02-17 10:51:10 - Analyzing model: stg_refund_line_items
+2026-02-17 10:51:10 - Looking for node: model.burga_shopify.stg_refund_line_items
+2026-02-17 10:51:10 - Is incremental check result: false
+2026-02-17 10:51:10 - Model stg_refund_line_items is not incremental, skipping full-refresh
+2026-02-17 10:51:10 - Analyzing model: stg_refunds
+2026-02-17 10:51:10 - Looking for node: model.burga_shopify.stg_refunds
+2026-02-17 10:51:10 - Is incremental check result: false
+2026-02-17 10:51:10 - Model stg_refunds is not incremental, skipping full-refresh
+2026-02-17 10:51:10 - Analyzing model: stg_shipping_lines
+2026-02-17 10:51:10 - Looking for node: model.burga_shopify.stg_shipping_lines
+2026-02-17 10:51:10 - Is incremental check result: false
+2026-02-17 10:51:10 - Model stg_shipping_lines is not incremental, skipping full-refresh
+2026-02-17 10:51:10 - Analyzing model: stg_shipping_tax_lines
+2026-02-17 10:51:10 - Looking for node: model.burga_shopify.stg_shipping_tax_lines
+2026-02-17 10:51:10 - Is incremental check result: false
+2026-02-17 10:51:10 - Model stg_shipping_tax_lines is not incremental, skipping full-refresh
+2026-02-17 10:51:10 - Analyzing model: stg_tax_lines
+2026-02-17 10:51:10 - Looking for node: model.burga_shopify.stg_tax_lines
+2026-02-17 10:51:11 - Is incremental check result: false
+2026-02-17 10:51:11 - Model stg_tax_lines is not incremental, skipping full-refresh
+2026-02-17 10:51:11 - Analyzing model: stg_transactions
+2026-02-17 10:51:11 - Looking for node: model.burga_shopify.stg_transactions
+2026-02-17 10:51:11 - Is incremental check result: false
+2026-02-17 10:51:11 - Model stg_transactions is not incremental, skipping full-refresh
+2026-02-17 10:51:11 - Incremental models array: int_influencers_historical_report shopify_orders shopify_refund_items shopify_refund_orders shopify_transactions refund_items_bc refund_orders_bc finance_gift_card_sales finance_gift_card_usage finance_orders stg_influencers_archive_daily_report stg_influencers_daily_report stg_questions stg_responses
+2026-02-17 10:51:11 - Refresh commands array: dbt build --select int_influencers_historical_report --full-refresh dbt build --select shopify_orders --full-refresh dbt build --select shopify_refund_items --full-refresh dbt build --select shopify_refund_orders --full-refresh dbt build --select shopify_transactions --full-refresh dbt build --select refund_items_bc --full-refresh dbt build --select refund_orders_bc --full-refresh dbt build --select finance_gift_card_sales --full-refresh dbt build --select finance_gift_card_usage --full-refresh dbt build --select finance_orders --full-refresh dbt build --select stg_influencers_archive_daily_report --full-refresh dbt build --select stg_influencers_daily_report --full-refresh dbt build --select stg_questions --full-refresh dbt build --select stg_responses --full-refresh
+2026-02-17 10:51:11 - Checking if models existed in main/master branch...
+2026-02-17 10:51:11 - Comparing commits: bac327d490ad5c27a3640a50eda9839ba9db83b3 (previous) -> 10df329b2465bf25525742eb96fdd7d55d7f1475 (current)
+2026-02-17 10:51:11 - Getting SQL files from current commit...
+2026-02-17 10:51:11 - Files in current commit:
+2026-02-17 10:51:11 -   - analyses/test_questions_missing_translations.sql
+2026-02-17 10:51:11 -   - analyses/test_responses_missing_translations.sql
+2026-02-17 10:51:11 -   - analyses/test_store_translation_mapping_coverage.sql
+2026-02-17 10:51:11 -   - dbt_packages/codegen/integration_tests/macros/assert_equal.sql
+2026-02-17 10:51:11 -   - dbt_packages/codegen/integration_tests/macros/integer_type_value.sql
+2026-02-17 10:51:11 -   - dbt_packages/codegen/integration_tests/macros/operations/create_source_table.sql
+2026-02-17 10:51:11 -   - dbt_packages/codegen/integration_tests/macros/text_type_value.sql
+2026-02-17 10:51:11 -   - dbt_packages/codegen/integration_tests/models/child_model.sql
+2026-02-17 10:51:11 -   - dbt_packages/codegen/integration_tests/models/model_data_a.sql
+2026-02-17 10:51:11 -   - dbt_packages/codegen/integration_tests/models/model_from_source.sql
+2026-02-17 10:51:11 -   - dbt_packages/codegen/integration_tests/models/model_incremental.sql
+2026-02-17 10:51:11 -   - dbt_packages/codegen/integration_tests/models/model_repeated.sql
+2026-02-17 10:51:11 -   - dbt_packages/codegen/integration_tests/models/model_struct.sql
+2026-02-17 10:51:11 -   - dbt_packages/codegen/integration_tests/models/model_without_any_ctes.sql
+2026-02-17 10:51:11 -   - dbt_packages/codegen/integration_tests/models/model_without_import_ctes.sql
+2026-02-17 10:51:11 -   - dbt_packages/codegen/integration_tests/tests/test_generate_base_models.sql
+2026-02-17 10:51:11 -   - dbt_packages/codegen/integration_tests/tests/test_generate_base_models_all_args.sql
+2026-02-17 10:51:11 -   - dbt_packages/codegen/integration_tests/tests/test_generate_base_models_case_sensitive.sql
+2026-02-17 10:51:11 -   - dbt_packages/codegen/integration_tests/tests/test_generate_base_models_leading.sql
+2026-02-17 10:51:11 -   - dbt_packages/codegen/integration_tests/tests/test_generate_model_import_ctes.sql
+2026-02-17 10:51:11 -   - dbt_packages/codegen/integration_tests/tests/test_generate_model_import_ctes_leading.sql
+2026-02-17 10:51:11 -   - dbt_packages/codegen/integration_tests/tests/test_generate_model_import_ctes_no_ctes.sql
+2026-02-17 10:51:11 -   - dbt_packages/codegen/integration_tests/tests/test_generate_model_repeated_yaml.sql
+2026-02-17 10:51:11 -   - dbt_packages/codegen/integration_tests/tests/test_generate_model_struct_yaml.sql
+2026-02-17 10:51:11 -   - dbt_packages/codegen/integration_tests/tests/test_generate_model_yaml.sql
+2026-02-17 10:51:11 -   - dbt_packages/codegen/integration_tests/tests/test_generate_model_yaml_multiple_models.sql
+2026-02-17 10:51:11 -   - dbt_packages/codegen/integration_tests/tests/test_generate_model_yaml_upstream_descriptions.sql
+2026-02-17 10:51:11 -   - dbt_packages/codegen/integration_tests/tests/test_generate_model_yaml_upstream_source_descriptions.sql
+2026-02-17 10:51:11 -   - dbt_packages/codegen/integration_tests/tests/test_generate_source.sql
+2026-02-17 10:51:11 -   - dbt_packages/codegen/integration_tests/tests/test_generate_source_all_args.sql
+2026-02-17 10:51:11 -   - dbt_packages/codegen/integration_tests/tests/test_generate_source_exclude.sql
+2026-02-17 10:51:11 -   - dbt_packages/codegen/integration_tests/tests/test_generate_source_include_database_property.sql
+2026-02-17 10:51:11 -   - dbt_packages/codegen/integration_tests/tests/test_generate_source_include_schema_property.sql
+2026-02-17 10:51:11 -   - dbt_packages/codegen/integration_tests/tests/test_generate_source_some_tables.sql
+2026-02-17 10:51:11 -   - dbt_packages/codegen/integration_tests/tests/test_generate_source_table_descriptions.sql
+2026-02-17 10:51:11 -   - dbt_packages/codegen/integration_tests/tests/test_generate_source_table_name.sql
+2026-02-17 10:51:11 -   - dbt_packages/codegen/integration_tests/tests/test_generate_source_table_pattern.sql
+2026-02-17 10:51:11 -   - dbt_packages/codegen/integration_tests/tests/test_generate_unit_test_template.sql
+2026-02-17 10:51:11 -   - dbt_packages/codegen/integration_tests/tests/test_generate_unit_test_template_incremental.sql
+2026-02-17 10:51:11 -   - dbt_packages/codegen/integration_tests/tests/test_generate_unit_test_template_inline_columns.sql
+2026-02-17 10:51:11 -   - dbt_packages/codegen/integration_tests/tests/test_generate_unit_test_template_model_from_source.sql
+2026-02-17 10:51:11 -   - dbt_packages/codegen/integration_tests/tests/test_generate_unit_test_template_no_inputs.sql
+2026-02-17 10:51:11 -   - dbt_packages/codegen/integration_tests/tests/test_helper_get_models.sql
+2026-02-17 10:51:11 -   - dbt_packages/codegen/macros/create_base_models.sql
+2026-02-17 10:51:11 -   - dbt_packages/codegen/macros/generate_base_model.sql
+2026-02-17 10:51:11 -   - dbt_packages/codegen/macros/generate_model_import_ctes.sql
+2026-02-17 10:51:11 -   - dbt_packages/codegen/macros/generate_model_yaml.sql
+2026-02-17 10:51:11 -   - dbt_packages/codegen/macros/generate_source.sql
+2026-02-17 10:51:11 -   - dbt_packages/codegen/macros/generate_unit_test_template.sql
+2026-02-17 10:51:11 -   - dbt_packages/codegen/macros/helpers/helpers.sql
+2026-02-17 10:51:11 -   - dbt_packages/codegen/macros/vendored/dbt_core/format_column.sql
+2026-02-17 10:51:11 -   - dbt_packages/dbt_airflow_macros/integration_tests/postgres/models/test_macros.sql
+2026-02-17 10:51:11 -   - dbt_packages/dbt_airflow_macros/macros/ds.sql
+2026-02-17 10:51:11 -   - dbt_packages/dbt_airflow_macros/macros/ds_nodash.sql
+2026-02-17 10:51:11 -   - dbt_packages/dbt_airflow_macros/macros/execution_date.sql
+2026-02-17 10:51:11 -   - dbt_packages/dbt_airflow_macros/macros/ts.sql
+2026-02-17 10:51:11 -   - dbt_packages/dbt_airflow_macros/macros/ts_nodash.sql
+2026-02-17 10:51:11 -   - dbt_packages/dbt_utils/integration_tests/macros/assert_equal_values.sql
+2026-02-17 10:51:11 -   - dbt_packages/dbt_utils/integration_tests/macros/limit_zero.sql
+2026-02-17 10:51:11 -   - dbt_packages/dbt_utils/integration_tests/macros/tests.sql
+2026-02-17 10:51:11 -   - dbt_packages/dbt_utils/integration_tests/models/datetime/test_date_spine.sql
+2026-02-17 10:51:11 -   - dbt_packages/dbt_utils/integration_tests/models/generic_tests/recency_time_excluded.sql
+2026-02-17 10:51:11 -   - dbt_packages/dbt_utils/integration_tests/models/generic_tests/recency_time_included.sql
+2026-02-17 10:51:11 -   - dbt_packages/dbt_utils/integration_tests/models/generic_tests/test_equal_column_subset.sql
+2026-02-17 10:51:11 -   - dbt_packages/dbt_utils/integration_tests/models/generic_tests/test_equal_rowcount.sql
+2026-02-17 10:51:11 -   - dbt_packages/dbt_utils/integration_tests/models/generic_tests/test_fewer_rows_than.sql
+2026-02-17 10:51:11 -   - dbt_packages/dbt_utils/integration_tests/models/geo/test_haversine_distance_km.sql
+2026-02-17 10:51:11 -   - dbt_packages/dbt_utils/integration_tests/models/geo/test_haversine_distance_mi.sql
+2026-02-17 10:51:11 -   - dbt_packages/dbt_utils/integration_tests/models/sql/test_deduplicate.sql
+2026-02-17 10:51:11 -   - dbt_packages/dbt_utils/integration_tests/models/sql/test_generate_series.sql
+2026-02-17 10:51:11 -   - dbt_packages/dbt_utils/integration_tests/models/sql/test_generate_surrogate_key.sql
+2026-02-17 10:51:11 -   - dbt_packages/dbt_utils/integration_tests/models/sql/test_get_column_values.sql
+2026-02-17 10:51:11 -   - dbt_packages/dbt_utils/integration_tests/models/sql/test_get_column_values_where.sql
+2026-02-17 10:51:11 -   - dbt_packages/dbt_utils/integration_tests/models/sql/test_get_filtered_columns_in_relation.sql
+2026-02-17 10:51:11 -   - dbt_packages/dbt_utils/integration_tests/models/sql/test_get_relations_by_pattern.sql
+2026-02-17 10:51:11 -   - dbt_packages/dbt_utils/integration_tests/models/sql/test_get_relations_by_prefix_and_union.sql
+2026-02-17 10:51:11 -   - dbt_packages/dbt_utils/integration_tests/models/sql/test_get_single_value.sql
+2026-02-17 10:51:11 -   - dbt_packages/dbt_utils/integration_tests/models/sql/test_get_single_value_default.sql
+2026-02-17 10:51:11 -   - dbt_packages/dbt_utils/integration_tests/models/sql/test_groupby.sql
+2026-02-17 10:51:11 -   - dbt_packages/dbt_utils/integration_tests/models/sql/test_not_empty_string_failing.sql
+2026-02-17 10:51:11 -   - dbt_packages/dbt_utils/integration_tests/models/sql/test_not_empty_string_passing.sql
+2026-02-17 10:51:11 -   - dbt_packages/dbt_utils/integration_tests/models/sql/test_nullcheck_table.sql
+2026-02-17 10:51:11 -   - dbt_packages/dbt_utils/integration_tests/models/sql/test_pivot.sql
+2026-02-17 10:51:11 -   - dbt_packages/dbt_utils/integration_tests/models/sql/test_pivot_apostrophe.sql
+2026-02-17 10:51:11 -   - dbt_packages/dbt_utils/integration_tests/models/sql/test_safe_add.sql
+2026-02-17 10:51:11 -   - dbt_packages/dbt_utils/integration_tests/models/sql/test_safe_divide.sql
+2026-02-17 10:51:11 -   - dbt_packages/dbt_utils/integration_tests/models/sql/test_safe_subtract.sql
+2026-02-17 10:51:11 -   - dbt_packages/dbt_utils/integration_tests/models/sql/test_star.sql
+2026-02-17 10:51:11 -   - dbt_packages/dbt_utils/integration_tests/models/sql/test_star_aggregate.sql
+2026-02-17 10:51:11 -   - dbt_packages/dbt_utils/integration_tests/models/sql/test_star_no_columns.sql
+2026-02-17 10:51:11 -   - dbt_packages/dbt_utils/integration_tests/models/sql/test_star_prefix_suffix.sql
+2026-02-17 10:51:11 -   - dbt_packages/dbt_utils/integration_tests/models/sql/test_star_quote_identifiers.sql
+2026-02-17 10:51:11 -   - dbt_packages/dbt_utils/integration_tests/models/sql/test_star_uppercase.sql
+2026-02-17 10:51:11 -   - dbt_packages/dbt_utils/integration_tests/models/sql/test_union.sql
+2026-02-17 10:51:11 -   - dbt_packages/dbt_utils/integration_tests/models/sql/test_union_base.sql
+2026-02-17 10:51:11 -   - dbt_packages/dbt_utils/integration_tests/models/sql/test_union_exclude_base_lowercase.sql
+2026-02-17 10:51:11 -   - dbt_packages/dbt_utils/integration_tests/models/sql/test_union_exclude_base_uppercase.sql
+2026-02-17 10:51:11 -   - dbt_packages/dbt_utils/integration_tests/models/sql/test_union_exclude_lowercase.sql
+2026-02-17 10:51:11 -   - dbt_packages/dbt_utils/integration_tests/models/sql/test_union_exclude_uppercase.sql
+2026-02-17 10:51:11 -   - dbt_packages/dbt_utils/integration_tests/models/sql/test_union_no_source_column.sql
+2026-02-17 10:51:11 -   - dbt_packages/dbt_utils/integration_tests/models/sql/test_union_where.sql
+2026-02-17 10:51:11 -   - dbt_packages/dbt_utils/integration_tests/models/sql/test_union_where_base.sql
+2026-02-17 10:51:11 -   - dbt_packages/dbt_utils/integration_tests/models/sql/test_unpivot.sql
+2026-02-17 10:51:11 -   - dbt_packages/dbt_utils/integration_tests/models/sql/test_unpivot_bool.sql
+2026-02-17 10:51:11 -   - dbt_packages/dbt_utils/integration_tests/models/sql/test_width_bucket.sql
+2026-02-17 10:51:11 -   - dbt_packages/dbt_utils/integration_tests/models/web/test_url_host.sql
+2026-02-17 10:51:11 -   - dbt_packages/dbt_utils/integration_tests/models/web/test_url_path.sql
+2026-02-17 10:51:11 -   - dbt_packages/dbt_utils/integration_tests/models/web/test_urls.sql
+2026-02-17 10:51:11 -   - dbt_packages/dbt_utils/integration_tests/tests/assert_get_query_results_as_dict_objects_equal.sql
+2026-02-17 10:51:11 -   - dbt_packages/dbt_utils/integration_tests/tests/generic/expect_table_columns_to_match_set.sql
+2026-02-17 10:51:11 -   - dbt_packages/dbt_utils/integration_tests/tests/jinja_helpers/assert_pretty_output_msg_is_string.sql
+2026-02-17 10:51:11 -   - dbt_packages/dbt_utils/integration_tests/tests/jinja_helpers/assert_pretty_time_is_string.sql
+2026-02-17 10:51:11 -   - dbt_packages/dbt_utils/integration_tests/tests/jinja_helpers/test_slugify.sql
+2026-02-17 10:51:11 -   - dbt_packages/dbt_utils/integration_tests/tests/sql/test_get_column_values_use_default.sql
+2026-02-17 10:51:11 -   - dbt_packages/dbt_utils/integration_tests/tests/sql/test_get_single_value_multiple_rows.sql
+2026-02-17 10:51:11 -   - dbt_packages/dbt_utils/macros/generic_tests/accepted_range.sql
+2026-02-17 10:51:11 -   - dbt_packages/dbt_utils/macros/generic_tests/at_least_one.sql
+2026-02-17 10:51:11 -   - dbt_packages/dbt_utils/macros/generic_tests/cardinality_equality.sql
+2026-02-17 10:51:11 -   - dbt_packages/dbt_utils/macros/generic_tests/equal_rowcount.sql
+2026-02-17 10:51:11 -   - dbt_packages/dbt_utils/macros/generic_tests/equality.sql
+2026-02-17 10:51:11 -   - dbt_packages/dbt_utils/macros/generic_tests/expression_is_true.sql
+2026-02-17 10:51:11 -   - dbt_packages/dbt_utils/macros/generic_tests/fewer_rows_than.sql
+2026-02-17 10:51:11 -   - dbt_packages/dbt_utils/macros/generic_tests/mutually_exclusive_ranges.sql
+2026-02-17 10:51:11 -   - dbt_packages/dbt_utils/macros/generic_tests/not_accepted_values.sql
+2026-02-17 10:51:11 -   - dbt_packages/dbt_utils/macros/generic_tests/not_constant.sql
+2026-02-17 10:51:11 -   - dbt_packages/dbt_utils/macros/generic_tests/not_empty_string.sql
+2026-02-17 10:51:11 -   - dbt_packages/dbt_utils/macros/generic_tests/not_null_proportion.sql
+2026-02-17 10:51:11 -   - dbt_packages/dbt_utils/macros/generic_tests/recency.sql
+2026-02-17 10:51:11 -   - dbt_packages/dbt_utils/macros/generic_tests/relationships_where.sql
+2026-02-17 10:51:11 -   - dbt_packages/dbt_utils/macros/generic_tests/sequential_values.sql
+2026-02-17 10:51:11 -   - dbt_packages/dbt_utils/macros/generic_tests/unique_combination_of_columns.sql
+2026-02-17 10:51:11 -   - dbt_packages/dbt_utils/macros/jinja_helpers/_is_ephemeral.sql
+2026-02-17 10:51:11 -   - dbt_packages/dbt_utils/macros/jinja_helpers/_is_relation.sql
+2026-02-17 10:51:11 -   - dbt_packages/dbt_utils/macros/jinja_helpers/log_info.sql
+2026-02-17 10:51:11 -   - dbt_packages/dbt_utils/macros/jinja_helpers/pretty_log_format.sql
+2026-02-17 10:51:11 -   - dbt_packages/dbt_utils/macros/jinja_helpers/pretty_time.sql
+2026-02-17 10:51:11 -   - dbt_packages/dbt_utils/macros/jinja_helpers/slugify.sql
+2026-02-17 10:51:11 -   - dbt_packages/dbt_utils/macros/sql/date_spine.sql
+2026-02-17 10:51:11 -   - dbt_packages/dbt_utils/macros/sql/deduplicate.sql
+2026-02-17 10:51:11 -   - dbt_packages/dbt_utils/macros/sql/generate_series.sql
+2026-02-17 10:51:11 -   - dbt_packages/dbt_utils/macros/sql/generate_surrogate_key.sql
+2026-02-17 10:51:11 -   - dbt_packages/dbt_utils/macros/sql/get_column_values.sql
+2026-02-17 10:51:11 -   - dbt_packages/dbt_utils/macros/sql/get_filtered_columns_in_relation.sql
+2026-02-17 10:51:11 -   - dbt_packages/dbt_utils/macros/sql/get_query_results_as_dict.sql
+2026-02-17 10:51:11 -   - dbt_packages/dbt_utils/macros/sql/get_relations_by_pattern.sql
+2026-02-17 10:51:11 -   - dbt_packages/dbt_utils/macros/sql/get_relations_by_prefix.sql
+2026-02-17 10:51:11 -   - dbt_packages/dbt_utils/macros/sql/get_single_value.sql
+2026-02-17 10:51:11 -   - dbt_packages/dbt_utils/macros/sql/get_table_types_sql.sql
+2026-02-17 10:51:11 -   - dbt_packages/dbt_utils/macros/sql/get_tables_by_pattern_sql.sql
+2026-02-17 10:51:11 -   - dbt_packages/dbt_utils/macros/sql/get_tables_by_prefix_sql.sql
+2026-02-17 10:51:11 -   - dbt_packages/dbt_utils/macros/sql/groupby.sql
+2026-02-17 10:51:11 -   - dbt_packages/dbt_utils/macros/sql/haversine_distance.sql
+2026-02-17 10:51:11 -   - dbt_packages/dbt_utils/macros/sql/nullcheck.sql
+2026-02-17 10:51:11 -   - dbt_packages/dbt_utils/macros/sql/nullcheck_table.sql
+2026-02-17 10:51:11 -   - dbt_packages/dbt_utils/macros/sql/pivot.sql
+2026-02-17 10:51:11 -   - dbt_packages/dbt_utils/macros/sql/safe_add.sql
+2026-02-17 10:51:11 -   - dbt_packages/dbt_utils/macros/sql/safe_divide.sql
+2026-02-17 10:51:11 -   - dbt_packages/dbt_utils/macros/sql/safe_subtract.sql
+2026-02-17 10:51:11 -   - dbt_packages/dbt_utils/macros/sql/star.sql
+2026-02-17 10:51:11 -   - dbt_packages/dbt_utils/macros/sql/surrogate_key.sql
+2026-02-17 10:51:11 -   - dbt_packages/dbt_utils/macros/sql/union.sql
+2026-02-17 10:51:11 -   - dbt_packages/dbt_utils/macros/sql/unpivot.sql
+2026-02-17 10:51:11 -   - dbt_packages/dbt_utils/macros/sql/width_bucket.sql
+2026-02-17 10:51:11 -   - dbt_packages/dbt_utils/macros/web/get_url_host.sql
+2026-02-17 10:51:11 -   - dbt_packages/dbt_utils/macros/web/get_url_parameter.sql
+2026-02-17 10:51:11 -   - dbt_packages/dbt_utils/macros/web/get_url_path.sql
+2026-02-17 10:51:11 -   - dbt_packages/re_data/integration_tests/macros/create_test_source_tables.sql
+2026-02-17 10:51:11 -   - dbt_packages/re_data/integration_tests/macros/drop_all_schemas.sql
+2026-02-17 10:51:11 -   - dbt_packages/re_data/integration_tests/macros/my_metrics.sql
+2026-02-17 10:51:11 -   - dbt_packages/re_data/integration_tests/macros/test_utils.sql
+2026-02-17 10:51:11 -   - dbt_packages/re_data/integration_tests/macros/trigger_schema_change.sql
+2026-02-17 10:51:11 -   - dbt_packages/re_data/integration_tests/models/monitoring/test_re_data_anomalies.sql
+2026-02-17 10:51:11 -   - dbt_packages/re_data/integration_tests/models/monitoring/test_re_data_metrics.sql
+2026-02-17 10:51:11 -   - dbt_packages/re_data/integration_tests/models/monitoring/test_re_data_table_samples.sql
+2026-02-17 10:51:11 -   - dbt_packages/re_data/integration_tests/models/monitoring/test_re_data_test_history.sql
+2026-02-17 10:51:11 -   - dbt_packages/re_data/integration_tests/models/monitoring/test_re_data_z_score.sql
+2026-02-17 10:51:11 -   - dbt_packages/re_data/integration_tests/models/public_macros/cleaning/sanitized_user_data.sql
+2026-02-17 10:51:11 -   - dbt_packages/re_data/integration_tests/models/public_macros/filtering/deduplicated.sql
+2026-02-17 10:51:11 -   - dbt_packages/re_data/integration_tests/models/public_macros/filtering/duplicates.sql
+2026-02-17 10:51:11 -   - dbt_packages/re_data/integration_tests/models/public_macros/normalizing/us_states_normalized.sql
+2026-02-17 10:51:11 -   - dbt_packages/re_data/integration_tests/models/public_macros/validating/validated_date_and_time.sql
+2026-02-17 10:51:11 -   - dbt_packages/re_data/integration_tests/models/public_macros/validating/validated_emails.sql
+2026-02-17 10:51:11 -   - dbt_packages/re_data/integration_tests/models/public_macros/validating/validated_ips.sql
+2026-02-17 10:51:11 -   - dbt_packages/re_data/integration_tests/models/public_macros/validating/validated_numbers.sql
+2026-02-17 10:51:11 -   - dbt_packages/re_data/integration_tests/models/public_macros/validating/validated_uuids.sql
+2026-02-17 10:51:11 -   - dbt_packages/re_data/integration_tests/models/transformed/buy_events.sql
+2026-02-17 10:51:11 -   - dbt_packages/re_data/macros/config/get_model_config.sql
+2026-02-17 10:51:11 -   - dbt_packages/re_data/macros/db/bigquery/quote_column_name.sql
+2026-02-17 10:51:11 -   - dbt_packages/re_data/macros/db/bigquery/quote_string.sql
+2026-02-17 10:51:11 -   - dbt_packages/re_data/macros/db/bigquery/split_and_return_nth_value.sql
+2026-02-17 10:51:11 -   - dbt_packages/re_data/macros/db/core/escape.sql
+2026-02-17 10:51:11 -   - dbt_packages/re_data/macros/db/core/identifier_mapping.sql
+2026-02-17 10:51:11 -   - dbt_packages/re_data/macros/db/core/quote_column_name.sql
+2026-02-17 10:51:11 -   - dbt_packages/re_data/macros/db/core/quote_string.sql
+2026-02-17 10:51:11 -   - dbt_packages/re_data/macros/db/core/split_and_return_nth_value.sql
+2026-02-17 10:51:11 -   - dbt_packages/re_data/macros/db/postgres/escape.sql
+2026-02-17 10:51:11 -   - dbt_packages/re_data/macros/db/postgres/postgres_type_db.sql
+2026-02-17 10:51:11 -   - dbt_packages/re_data/macros/db/postgres/quote_string.sql
+2026-02-17 10:51:11 -   - dbt_packages/re_data/macros/db/redshift/escape.sql
+2026-02-17 10:51:11 -   - dbt_packages/re_data/macros/db/redshift/quote_string.sql
+2026-02-17 10:51:11 -   - dbt_packages/re_data/macros/db/snowflake/identifier_mapping.sql
+2026-02-17 10:51:11 -   - dbt_packages/re_data/macros/meta/get_monitored.sql
+2026-02-17 10:51:11 -   - dbt_packages/re_data/macros/meta/information_schema.sql
+2026-02-17 10:51:11 -   - dbt_packages/re_data/macros/meta/monitored_model_queries.sql
+2026-02-17 10:51:11 -   - dbt_packages/re_data/macros/meta/save_monitored.sql
+2026-02-17 10:51:11 -   - dbt_packages/re_data/macros/meta/table_name.sql
+2026-02-17 10:51:11 -   - dbt_packages/re_data/macros/metrics/base/build_in/column_default.sql
+2026-02-17 10:51:11 -   - dbt_packages/re_data/macros/metrics/base/build_in/optional_column_metrics.sql
+2026-02-17 10:51:11 -   - dbt_packages/re_data/macros/metrics/base/build_in/optional_table_metrics.sql
+2026-02-17 10:51:11 -   - dbt_packages/re_data/macros/metrics/base/build_in/table_default.sql
+2026-02-17 10:51:11 -   - dbt_packages/re_data/macros/metrics/base/expression.sql
+2026-02-17 10:51:11 -   - dbt_packages/re_data/macros/metrics/base/internal_model_template.sql
+2026-02-17 10:51:11 -   - dbt_packages/re_data/macros/metrics/base/queries.sql
+2026-02-17 10:51:12 -   - dbt_packages/re_data/macros/post_hook/re_data_monitored.sql
+2026-02-17 10:51:12 -   - dbt_packages/re_data/macros/public/cleaning/clean_additional_whitespace.sql
+2026-02-17 10:51:12 -   - dbt_packages/re_data/macros/public/cleaning/clean_blacklist.sql
+2026-02-17 10:51:12 -   - dbt_packages/re_data/macros/public/cleaning/clean_capitalize_words.sql
+2026-02-17 10:51:12 -   - dbt_packages/re_data/macros/public/filtering/get_duplicates.sql
+2026-02-17 10:51:12 -   - dbt_packages/re_data/macros/public/filtering/remove_duplicates.sql
+2026-02-17 10:51:12 -   - dbt_packages/re_data/macros/public/normalizing/normalize_values.sql
+2026-02-17 10:51:12 -   - dbt_packages/re_data/macros/public/store/export_alerts.sql
+2026-02-17 10:51:12 -   - dbt_packages/re_data/macros/public/store/export_table_samples.sql
+2026-02-17 10:51:12 -   - dbt_packages/re_data/macros/public/store/export_tests_history.sql
+2026-02-17 10:51:12 -   - dbt_packages/re_data/macros/public/store/generate_overview.sql
+2026-02-17 10:51:12 -   - dbt_packages/re_data/macros/public/validating/regex_dict.sql
+2026-02-17 10:51:12 -   - dbt_packages/re_data/macros/public/validating/valid_with_regex.sql
+2026-02-17 10:51:12 -   - dbt_packages/re_data/macros/run_end/save_results_history.sql
+2026-02-17 10:51:12 -   - dbt_packages/re_data/macros/samples/internal_model_template.sql
+2026-02-17 10:51:12 -   - dbt_packages/re_data/macros/store/insert_list_to_table.sql
+2026-02-17 10:51:12 -   - dbt_packages/re_data/macros/tests/test_metrics.sql
+2026-02-17 10:51:12 -   - dbt_packages/re_data/macros/utils/agate/row_value.sql
+2026-02-17 10:51:12 -   - dbt_packages/re_data/macros/utils/bool_to_string.sql
+2026-02-17 10:51:12 -   - dbt_packages/re_data/macros/utils/column_types.sql
+2026-02-17 10:51:12 -   - dbt_packages/re_data/macros/utils/comma_delimited_list.sql
+2026-02-17 10:51:12 -   - dbt_packages/re_data/macros/utils/comparison_text.sql
+2026-02-17 10:51:12 -   - dbt_packages/re_data/macros/utils/deduplication/add_duplication_context.sql
+2026-02-17 10:51:12 -   - dbt_packages/re_data/macros/utils/depends_macro.sql
+2026-02-17 10:51:12 -   - dbt_packages/re_data/macros/utils/dict_from_list.sql
+2026-02-17 10:51:12 -   - dbt_packages/re_data/macros/utils/fivetran_utils/json_extract.sql
+2026-02-17 10:51:12 -   - dbt_packages/re_data/macros/utils/fivetran_utils/percentile.sql
+2026-02-17 10:51:12 -   - dbt_packages/re_data/macros/utils/for_loops.sql
+2026-02-17 10:51:12 -   - dbt_packages/re_data/macros/utils/formulas.sql
+2026-02-17 10:51:12 -   - dbt_packages/re_data/macros/utils/generate_alert_message.sql
+2026-02-17 10:51:12 -   - dbt_packages/re_data/macros/utils/get_database.sql
+2026-02-17 10:51:12 -   - dbt_packages/re_data/macros/utils/in_compile.sql
+2026-02-17 10:51:12 -   - dbt_packages/re_data/macros/utils/is_list.sql
+2026-02-17 10:51:12 -   - dbt_packages/re_data/macros/utils/json/to_single_json.sql
+2026-02-17 10:51:12 -   - dbt_packages/re_data/macros/utils/mock/empty_tables.sql
+2026-02-17 10:51:12 -   - dbt_packages/re_data/macros/utils/monitored_config.sql
+2026-02-17 10:51:12 -   - dbt_packages/re_data/macros/utils/quote.sql
+2026-02-17 10:51:12 -   - dbt_packages/re_data/macros/utils/regular_expression.sql
+2026-02-17 10:51:12 -   - dbt_packages/re_data/macros/utils/time_macros.sql
+2026-02-17 10:51:12 -   - dbt_packages/re_data/macros/utils/used_types.sql
+2026-02-17 10:51:12 -   - dbt_packages/re_data/models/alerts/re_data_alerts.sql
+2026-02-17 10:51:12 -   - dbt_packages/re_data/models/alerts/re_data_anomalies.sql
+2026-02-17 10:51:12 -   - dbt_packages/re_data/models/alerts/re_data_schema_changes.sql
+2026-02-17 10:51:12 -   - dbt_packages/re_data/models/alerts/re_data_test_runs.sql
+2026-02-17 10:51:12 -   - dbt_packages/re_data/models/alerts/re_data_z_score.sql
+2026-02-17 10:51:12 -   - dbt_packages/re_data/models/internal/metrics/base/re_data_last_base_metrics_part0.sql
+2026-02-17 10:51:12 -   - dbt_packages/re_data/models/internal/metrics/base/re_data_last_base_metrics_part1.sql
+2026-02-17 10:51:12 -   - dbt_packages/re_data/models/internal/metrics/base/re_data_last_base_metrics_part2.sql
+2026-02-17 10:51:12 -   - dbt_packages/re_data/models/internal/metrics/base/re_data_last_base_metrics_part3.sql
+2026-02-17 10:51:12 -   - dbt_packages/re_data/models/internal/metrics/base/re_data_last_base_metrics_thread0.sql
+2026-02-17 10:51:12 -   - dbt_packages/re_data/models/internal/metrics/base/re_data_last_base_metrics_thread1.sql
+2026-02-17 10:51:12 -   - dbt_packages/re_data/models/internal/metrics/base/re_data_last_base_metrics_thread2.sql
+2026-02-17 10:51:12 -   - dbt_packages/re_data/models/internal/metrics/base/re_data_last_base_metrics_thread3.sql
+2026-02-17 10:51:12 -   - dbt_packages/re_data/models/internal/re_data_run_started_at.sql
+2026-02-17 10:51:12 -   - dbt_packages/re_data/models/internal/samples/re_data_last_table_samples.sql
+2026-02-17 10:51:12 -   - dbt_packages/re_data/models/internal/samples/re_data_last_table_samples_part.sql
+2026-02-17 10:51:12 -   - dbt_packages/re_data/models/meta/re_data_columns.sql
+2026-02-17 10:51:12 -   - dbt_packages/re_data/models/meta/re_data_monitored.sql
+2026-02-17 10:51:12 -   - dbt_packages/re_data/models/meta/re_data_selected.sql
+2026-02-17 10:51:12 -   - dbt_packages/re_data/models/metrics/final/re_data_metrics.sql
+2026-02-17 10:51:12 -   - dbt_packages/re_data/models/metrics/for_anomalies/re_data_last_metrics.sql
+2026-02-17 10:51:12 -   - dbt_packages/re_data/models/metrics/for_anomalies/re_data_last_stats.sql
+2026-02-17 10:51:12 -   - dbt_packages/re_data/models/metrics/types/base/re_data_base_metrics.sql
+2026-02-17 10:51:12 -   - dbt_packages/re_data/models/metrics/types/samples/re_data_table_samples.sql
+2026-02-17 10:51:12 -   - dbt_packages/re_data/models/metrics/types/schema/re_data_columns_over_time.sql
+2026-02-17 10:51:12 -   - macros/convert_k_m_suffix.sql
+2026-02-17 10:51:12 -   - macros/convert_str_to_bool.sql
+2026-02-17 10:51:12 -   - macros/create_shop_name.sql
+2026-02-17 10:51:12 -   - macros/generate_alias_name.sql
+2026-02-17 10:51:12 -   - macros/generate_model_from_yml.sql
+2026-02-17 10:51:12 -   - macros/get_design_name.sql
+2026-02-17 10:51:12 -   - macros/get_discount_applications.sql
+2026-02-17 10:51:12 -   - macros/get_fairing_qa.sql
+2026-02-17 10:51:12 -   - macros/get_fulfillment_line_items.sql
+2026-02-17 10:51:12 -   - macros/get_gift_cards.sql
+2026-02-17 10:51:12 -   - macros/get_klaviyo_campaigns.sql
+2026-02-17 10:51:12 -   - macros/get_klaviyo_custom_report_campaign_values.sql
+2026-02-17 10:51:12 -   - macros/get_line_items.sql
+2026-02-17 10:51:12 -   - macros/get_line_items_discount_allocations.sql
+2026-02-17 10:51:12 -   - macros/get_line_items_tax_lines.sql
+2026-02-17 10:51:12 -   - macros/get_orders.sql
+2026-02-17 10:51:12 -   - macros/get_products_attribute.sql
+2026-02-17 10:51:12 -   - macros/get_refund_line_items.sql
+2026-02-17 10:51:12 -   - macros/get_refunds.sql
+2026-02-17 10:51:12 -   - macros/get_shipping_lines.sql
+2026-02-17 10:51:12 -   - macros/get_shipping_tax_lines.sql
+2026-02-17 10:51:12 -   - macros/get_tax_lines.sql
+2026-02-17 10:51:12 -   - macros/get_transactions.sql
+2026-02-17 10:51:12 -   - macros/union_staging_tables.sql
+2026-02-17 10:51:12 -   - models/intermediate/couriers/int_couriers_kolosus.sql
+2026-02-17 10:51:12 -   - models/intermediate/fairing/int_qa.sql
+2026-02-17 10:51:12 -   - models/intermediate/int_marketing/int_ads/int_applovin_ads/int_applovin_ads_advertiser_report.sql
+2026-02-17 10:51:12 -   - models/intermediate/int_marketing/int_ads/int_facebook_ads/int_facebook_ads_custom_country_adname.sql
+2026-02-17 10:51:12 -   - models/intermediate/int_marketing/int_ads/int_google_ads/int_google_ads_custom_geographic_view.sql
+2026-02-17 10:51:12 -   - models/intermediate/int_marketing/int_ads/int_pinterest_ads/int_pinterest_ads_pinterest_analytics_report.sql
+2026-02-17 10:51:12 -   - models/intermediate/int_marketing/int_ads/int_snapchat_ads/int_snapchat_ads_geo_country_daily_report.sql
+2026-02-17 10:51:12 -   - models/intermediate/int_marketing/int_ads/int_tiktok_ads/int_tiktok_ads_ads_reports_by_country_daily.sql
+2026-02-17 10:51:12 -   - models/intermediate/int_marketing/int_influencers_historical_report.sql
+2026-02-17 10:51:12 -   - models/intermediate/shopify/int_shopify_discount_applications.sql
+2026-02-17 10:51:12 -   - models/intermediate/shopify/int_shopify_line_items.sql
+2026-02-17 10:51:12 -   - models/intermediate/shopify/int_shopify_orders.sql
+2026-02-17 10:51:12 -   - models/intermediate/shopify/int_shopify_refunds.sql
+2026-02-17 10:51:12 -   - models/intermediate/shopify/int_shopify_refunds_line_items.sql
+2026-02-17 10:51:12 -   - models/intermediate/shopify/int_shopify_shipping.sql
+2026-02-17 10:51:12 -   - models/intermediate/shopify/int_shopify_tax_lines.sql
+2026-02-17 10:51:12 -   - models/intermediate/shopify/int_shopify_transactions.sql
+2026-02-17 10:51:12 -   - models/marts/marketing/ads/applovin_ads_performance.sql
+2026-02-17 10:51:12 -   - models/marts/marketing/ads/bing_ads_performance.sql
+2026-02-17 10:51:12 -   - models/marts/marketing/ads/facebook_ads_performance.sql
+2026-02-17 10:51:12 -   - models/marts/marketing/ads/pinterest_ads_performance.sql
+2026-02-17 10:51:12 -   - models/marts/marketing/ads/snapchat_ads_performance.sql
+2026-02-17 10:51:12 -   - models/marts/marketing/ads/tiktok_ads_performance.sql
+2026-02-17 10:51:12 -   - models/marts/marketing/influencers/marketing_influencers_summary.sql
+2026-02-17 10:51:12 -   - models/marts/marketing/marketing_daily_report.sql
+2026-02-17 10:51:12 -   - models/marts/shopify/shopify_items_detailed.sql
+2026-02-17 10:51:12 -   - models/marts/shopify/shopify_orders.sql
+2026-02-17 10:51:12 -   - models/marts/shopify/shopify_refund_items.sql
+2026-02-17 10:51:12 -   - models/marts/shopify/shopify_refund_orders.sql
+2026-02-17 10:51:12 -   - models/marts/shopify/shopify_transactions.sql
+2026-02-17 10:51:12 -   - models/marts/shopify_bc/refund_items_bc.sql
+2026-02-17 10:51:12 -   - models/marts/shopify_bc/refund_orders_bc.sql
+2026-02-17 10:51:12 -   - models/marts/shopify_fairing_surveys/male_orders_products_summary.sql
+2026-02-17 10:51:12 -   - models/marts/shopify_fairing_surveys/mart_male_self_purchase.sql
+2026-02-17 10:51:12 -   - models/marts/shopify_finance/finance_gift_card_sales.sql
+2026-02-17 10:51:12 -   - models/marts/shopify_finance/finance_gift_card_usage.sql
+2026-02-17 10:51:12 -   - models/marts/shopify_finance/finance_orders.sql
+2026-02-17 10:51:12 -   - models/marts/shopify_sales/swarovski_sales.sql
+2026-02-17 10:51:12 -   - models/marts/shopify_sales/swarovski_stock.sql
+2026-02-17 10:51:12 -   - models/staging/couriers/stg_all_couriers.sql
+2026-02-17 10:51:12 -   - models/staging/inventory/stg_mes_inventory.sql
+2026-02-17 10:51:12 -   - models/staging/kolosus/stg_kolosus_orders.sql
+2026-02-17 10:51:12 -   - models/staging/kolosus/stg_kolosus_shippments.sql
+2026-02-17 10:51:12 -   - models/staging/mappings/stg_mappings_canada_tax_rates.sql
+2026-02-17 10:51:12 -   - models/staging/mappings/stg_mappings_usa_sales_tax.sql
+2026-02-17 10:51:12 -   - models/staging/mappings/stg_mappings_vat_rates.sql
+2026-02-17 10:51:12 -   - models/staging/raw_sys_burga_sheets/stg_influencers_archive_daily_report.sql
+2026-02-17 10:51:12 -   - models/staging/raw_sys_burga_sheets/stg_influencers_daily_report.sql
+2026-02-17 10:51:12 -   - models/staging/raw_sys_fairing/stg_questions.sql
+2026-02-17 10:51:12 -   - models/staging/raw_sys_fairing/stg_responses.sql
+2026-02-17 10:51:12 -   - models/staging/raw_sys_mes_inventory/stg_mes_inventory_sku.sql
+2026-02-17 10:51:12 -   - models/staging/raw_sys_shopify/stg_discount_applications.sql
+2026-02-17 10:51:12 -   - models/staging/raw_sys_shopify/stg_fulfillment_line_items.sql
+2026-02-17 10:51:12 -   - models/staging/raw_sys_shopify/stg_gift_cards.sql
+2026-02-17 10:51:12 -   - models/staging/raw_sys_shopify/stg_line_item_discount_allocations.sql
+2026-02-17 10:51:12 -   - models/staging/raw_sys_shopify/stg_line_item_tax_lines.sql
+2026-02-17 10:51:12 -   - models/staging/raw_sys_shopify/stg_line_items.sql
+2026-02-17 10:51:12 -   - models/staging/raw_sys_shopify/stg_orders.sql
+2026-02-17 10:51:12 -   - models/staging/raw_sys_shopify/stg_products.sql
+2026-02-17 10:51:12 -   - models/staging/raw_sys_shopify/stg_refund_line_items.sql
+2026-02-17 10:51:12 -   - models/staging/raw_sys_shopify/stg_refunds.sql
+2026-02-17 10:51:12 -   - models/staging/raw_sys_shopify/stg_shipping_lines.sql
+2026-02-17 10:51:12 -   - models/staging/raw_sys_shopify/stg_shipping_tax_lines.sql
+2026-02-17 10:51:12 -   - models/staging/raw_sys_shopify/stg_tax_lines.sql
+2026-02-17 10:51:12 -   - models/staging/raw_sys_shopify/stg_transactions.sql
+2026-02-17 10:51:12 -   - models/staging/stg_marketing/stg_ads/stg_applovin_ads/stg_applovin_ads_advertiser_report.sql
+2026-02-17 10:51:12 -   - models/staging/stg_marketing/stg_ads/stg_bing_ads/stg_bing_ads_geographic_performance_report_daily.sql
+2026-02-17 10:51:12 -   - models/staging/stg_marketing/stg_ads/stg_facebook_ads/stg_facebook_ads_custom_country_adname.sql
+2026-02-17 10:51:12 -   - models/staging/stg_marketing/stg_ads/stg_google_ads/stg_google_ads_custom_geographic_view.sql
+2026-02-17 10:51:12 -   - models/staging/stg_marketing/stg_ads/stg_google_ads/stg_google_ads_custom_geographic_view_ad_group.sql
+2026-02-17 10:51:12 -   - models/staging/stg_marketing/stg_ads/stg_google_ads/stg_google_ads_geo_target_constant.sql
+2026-02-17 10:51:12 -   - models/staging/stg_marketing/stg_ads/stg_pinterest_ads/stg_pinterest_ads_pinterest_analytics_report.sql
+2026-02-17 10:51:12 -   - models/staging/stg_marketing/stg_ads/stg_snapchat_ads/stg_snapchat_ads_ad_geo_country_daily_report.sql
+2026-02-17 10:51:12 -   - models/staging/stg_marketing/stg_ads/stg_snapchat_ads/stg_snapchat_ads_ad_squads.sql
+2026-02-17 10:51:12 -   - models/staging/stg_marketing/stg_ads/stg_snapchat_ads/stg_snapchat_ads_ads.sql
+2026-02-17 10:51:12 -   - models/staging/stg_marketing/stg_ads/stg_snapchat_ads/stg_snapchat_ads_campaigns.sql
+2026-02-17 10:51:12 -   - models/staging/stg_marketing/stg_ads/stg_tiktok_ads/stg_tiktok_ads_ads_reports_by_country_daily.sql
+2026-02-17 10:51:12 -   - models/staging/stg_marketing/stg_analytics/stg_google_analytics/stg_ga_date_country_sessions.sql
+2026-02-17 10:51:12 -   - models/staging/stg_marketing/stg_forecasts/stg_forecast_daily.sql
+2026-02-17 10:51:12 -   - models/staging/stg_marketing/stg_forecasts/stg_forecast_monthly_shares.sql
+2026-02-17 10:51:12 -   - models/staging/stg_marketing/stg_klaviyo/stg_klaviyo_campaigns.sql
+2026-02-17 10:51:12 -   - models/staging/stg_marketing/stg_klaviyo/stg_klaviyo_custom_report_campaign_values.sql
+2026-02-17 10:51:12 - Processing model: int_influencers_historical_report
+2026-02-17 10:51:12 - Found model path in changed files: burga_shopify/models/intermediate/int_marketing/int_influencers_historical_report.sql
+2026-02-17 10:51:12 - Checking if burga_shopify/models/intermediate/int_marketing/int_influencers_historical_report.sql existed in git history before current commit...
+2026-02-17 10:51:12 - First commit that added this file: 
+2026-02-17 10:51:12 - Current changes status: 
+2026-02-17 10:51:12 - Running git diff command: git diff --name-status bac327d490ad5c27a3640a50eda9839ba9db83b3 10df329b2465bf25525742eb96fdd7d55d7f1475 -- burga_shopify/models/intermediate/int_marketing/int_influencers_historical_report.sql
+2026-02-17 10:51:12 - Full git diff output:
+2026-02-17 10:51:12 - Git log between commits:
+2026-02-17 10:51:12 -   10df329 Merge pull request #96 from UAB-Hautica/DD_2026_02_16_LS_stg_products
+2026-02-17 10:51:12 -   8badc70 PR_AGENT Updates
+2026-02-17 10:51:12 -   7ab17a9 update_sqlfluff_rules
+2026-02-17 10:51:12 -   9593d5c update
+2026-02-17 10:51:12 -   4942d6b GedasKr Structure Data Quality Update
+2026-02-17 10:51:12 -   4817753 add model stg_products
+2026-02-17 10:51:12 -   0da8764 update macro
+2026-02-17 10:51:12 - Detailed change information:
+2026-02-17 10:51:12 -   2026-02-17 10:51:12 - Checking file: burga_shopify/models/intermediate/int_marketing/int_influencers_historical_report.sql
+2026-02-17 10:51:12 -   2026-02-17 10:51:12 - Previous commit: bac327d490ad5c27a3640a50eda9839ba9db83b3
+2026-02-17 10:51:12 -   2026-02-17 10:51:12 - Current commit: 10df329b2465bf25525742eb96fdd7d55d7f1475
+2026-02-17 10:51:12 -   2026-02-17 10:51:12 - Git history:
+2026-02-17 10:51:12 -   2026-02-17 10:51:12 - File exists in previous commit
+2026-02-17 10:51:12 -   Change type: M (Modified)
+2026-02-17 10:51:12 -   Status: Not first deployment
+2026-02-17 10:51:12 - File exists in previous commit
+2026-02-17 10:51:12 - Full changes information:
+2026-02-17 10:51:12 -   - Model path: burga_shopify/models/intermediate/int_marketing/int_influencers_historical_report.sql
+2026-02-17 10:51:12 -   - First commit: 
+2026-02-17 10:51:12 -   - Current changes: 
+2026-02-17 10:51:12 -   - Is new in current commit: false
+2026-02-17 10:51:12 - âœ“ Model exists and was modified in current commit
+2026-02-17 10:51:12 - Processing model: shopify_orders
+2026-02-17 10:51:12 - Found model path in changed files: burga_shopify/models/marts/shopify/shopify_orders.sql
+2026-02-17 10:51:12 - Checking if burga_shopify/models/marts/shopify/shopify_orders.sql existed in git history before current commit...
+2026-02-17 10:51:12 - First commit that added this file: 
+2026-02-17 10:51:12 - Current changes status: 
+2026-02-17 10:51:12 - Running git diff command: git diff --name-status bac327d490ad5c27a3640a50eda9839ba9db83b3 10df329b2465bf25525742eb96fdd7d55d7f1475 -- burga_shopify/models/marts/shopify/shopify_orders.sql
+2026-02-17 10:51:12 - Full git diff output:
+2026-02-17 10:51:12 - Git log between commits:
+2026-02-17 10:51:12 -   10df329 Merge pull request #96 from UAB-Hautica/DD_2026_02_16_LS_stg_products
+2026-02-17 10:51:12 -   8badc70 PR_AGENT Updates
+2026-02-17 10:51:12 -   7ab17a9 update_sqlfluff_rules
+2026-02-17 10:51:12 -   9593d5c update
+2026-02-17 10:51:12 -   4942d6b GedasKr Structure Data Quality Update
+2026-02-17 10:51:12 -   4817753 add model stg_products
+2026-02-17 10:51:12 -   0da8764 update macro
+2026-02-17 10:51:12 - Detailed change information:
+2026-02-17 10:51:12 -   2026-02-17 10:51:12 - Checking file: burga_shopify/models/marts/shopify/shopify_orders.sql
+2026-02-17 10:51:12 -   2026-02-17 10:51:12 - Previous commit: bac327d490ad5c27a3640a50eda9839ba9db83b3
+2026-02-17 10:51:12 -   2026-02-17 10:51:12 - Current commit: 10df329b2465bf25525742eb96fdd7d55d7f1475
+2026-02-17 10:51:12 -   2026-02-17 10:51:12 - Git history:
+2026-02-17 10:51:12 -   2026-02-17 10:51:12 - File exists in previous commit
+2026-02-17 10:51:12 -   Change type: M (Modified)
+2026-02-17 10:51:12 -   Status: Not first deployment
+2026-02-17 10:51:12 - File exists in previous commit
+2026-02-17 10:51:12 - Full changes information:
+2026-02-17 10:51:12 -   - Model path: burga_shopify/models/marts/shopify/shopify_orders.sql
+2026-02-17 10:51:12 -   - First commit: 
+2026-02-17 10:51:12 -   - Current changes: 
+2026-02-17 10:51:12 -   - Is new in current commit: false
+2026-02-17 10:51:12 - âœ“ Model exists and was modified in current commit
+2026-02-17 10:51:12 - Processing model: shopify_refund_items
+2026-02-17 10:51:12 - Found model path in changed files: burga_shopify/models/marts/shopify/shopify_refund_items.sql
+2026-02-17 10:51:12 - Checking if burga_shopify/models/marts/shopify/shopify_refund_items.sql existed in git history before current commit...
+2026-02-17 10:51:12 - First commit that added this file: 
+2026-02-17 10:51:12 - Current changes status: 
+2026-02-17 10:51:12 - Running git diff command: git diff --name-status bac327d490ad5c27a3640a50eda9839ba9db83b3 10df329b2465bf25525742eb96fdd7d55d7f1475 -- burga_shopify/models/marts/shopify/shopify_refund_items.sql
+2026-02-17 10:51:12 - Full git diff output:
+2026-02-17 10:51:12 - Git log between commits:
+2026-02-17 10:51:12 -   10df329 Merge pull request #96 from UAB-Hautica/DD_2026_02_16_LS_stg_products
+2026-02-17 10:51:12 -   8badc70 PR_AGENT Updates
+2026-02-17 10:51:12 -   7ab17a9 update_sqlfluff_rules
+2026-02-17 10:51:12 -   9593d5c update
+2026-02-17 10:51:12 -   4942d6b GedasKr Structure Data Quality Update
+2026-02-17 10:51:12 -   4817753 add model stg_products
+2026-02-17 10:51:12 -   0da8764 update macro
+2026-02-17 10:51:12 - Detailed change information:
+2026-02-17 10:51:12 -   2026-02-17 10:51:12 - Checking file: burga_shopify/models/marts/shopify/shopify_refund_items.sql
+2026-02-17 10:51:12 -   2026-02-17 10:51:12 - Previous commit: bac327d490ad5c27a3640a50eda9839ba9db83b3
+2026-02-17 10:51:12 -   2026-02-17 10:51:12 - Current commit: 10df329b2465bf25525742eb96fdd7d55d7f1475
+2026-02-17 10:51:12 -   2026-02-17 10:51:12 - Git history:
+2026-02-17 10:51:12 -   2026-02-17 10:51:12 - File exists in previous commit
+2026-02-17 10:51:12 -   Change type: M (Modified)
+2026-02-17 10:51:12 -   Status: Not first deployment
+2026-02-17 10:51:12 - File exists in previous commit
+2026-02-17 10:51:12 - Full changes information:
+2026-02-17 10:51:12 -   - Model path: burga_shopify/models/marts/shopify/shopify_refund_items.sql
+2026-02-17 10:51:12 -   - First commit: 
+2026-02-17 10:51:12 -   - Current changes: 
+2026-02-17 10:51:12 -   - Is new in current commit: false
+2026-02-17 10:51:12 - âœ“ Model exists and was modified in current commit
+2026-02-17 10:51:12 - Processing model: shopify_refund_orders
+2026-02-17 10:51:12 - Found model path in changed files: burga_shopify/models/marts/shopify/shopify_refund_orders.sql
+2026-02-17 10:51:12 - Checking if burga_shopify/models/marts/shopify/shopify_refund_orders.sql existed in git history before current commit...
+2026-02-17 10:51:12 - First commit that added this file: 
+2026-02-17 10:51:12 - Current changes status: 
+2026-02-17 10:51:12 - Running git diff command: git diff --name-status bac327d490ad5c27a3640a50eda9839ba9db83b3 10df329b2465bf25525742eb96fdd7d55d7f1475 -- burga_shopify/models/marts/shopify/shopify_refund_orders.sql
+2026-02-17 10:51:12 - Full git diff output:
+2026-02-17 10:51:12 - Git log between commits:
+2026-02-17 10:51:12 -   10df329 Merge pull request #96 from UAB-Hautica/DD_2026_02_16_LS_stg_products
+2026-02-17 10:51:12 -   8badc70 PR_AGENT Updates
+2026-02-17 10:51:12 -   7ab17a9 update_sqlfluff_rules
+2026-02-17 10:51:12 -   9593d5c update
+2026-02-17 10:51:12 -   4942d6b GedasKr Structure Data Quality Update
+2026-02-17 10:51:12 -   4817753 add model stg_products
+2026-02-17 10:51:12 -   0da8764 update macro
+2026-02-17 10:51:12 - Detailed change information:
+2026-02-17 10:51:12 -   2026-02-17 10:51:12 - Checking file: burga_shopify/models/marts/shopify/shopify_refund_orders.sql
+2026-02-17 10:51:12 -   2026-02-17 10:51:12 - Previous commit: bac327d490ad5c27a3640a50eda9839ba9db83b3
+2026-02-17 10:51:12 -   2026-02-17 10:51:12 - Current commit: 10df329b2465bf25525742eb96fdd7d55d7f1475
+2026-02-17 10:51:12 -   2026-02-17 10:51:12 - Git history:
+2026-02-17 10:51:12 -   2026-02-17 10:51:12 - File exists in previous commit
+2026-02-17 10:51:12 -   Change type: M (Modified)
+2026-02-17 10:51:12 -   Status: Not first deployment
+2026-02-17 10:51:12 - File exists in previous commit
+2026-02-17 10:51:12 - Full changes information:
+2026-02-17 10:51:12 -   - Model path: burga_shopify/models/marts/shopify/shopify_refund_orders.sql
+2026-02-17 10:51:12 -   - First commit: 
+2026-02-17 10:51:12 -   - Current changes: 
+2026-02-17 10:51:12 -   - Is new in current commit: false
+2026-02-17 10:51:12 - âœ“ Model exists and was modified in current commit
+2026-02-17 10:51:12 - Processing model: shopify_transactions
+2026-02-17 10:51:12 - Found model path in changed files: burga_shopify/models/marts/shopify/shopify_transactions.sql
+2026-02-17 10:51:12 - Checking if burga_shopify/models/marts/shopify/shopify_transactions.sql existed in git history before current commit...
+2026-02-17 10:51:12 - First commit that added this file: 
+2026-02-17 10:51:12 - Current changes status: 
+2026-02-17 10:51:12 - Running git diff command: git diff --name-status bac327d490ad5c27a3640a50eda9839ba9db83b3 10df329b2465bf25525742eb96fdd7d55d7f1475 -- burga_shopify/models/marts/shopify/shopify_transactions.sql
+2026-02-17 10:51:12 - Full git diff output:
+2026-02-17 10:51:12 - Git log between commits:
+2026-02-17 10:51:12 -   10df329 Merge pull request #96 from UAB-Hautica/DD_2026_02_16_LS_stg_products
+2026-02-17 10:51:12 -   8badc70 PR_AGENT Updates
+2026-02-17 10:51:12 -   7ab17a9 update_sqlfluff_rules
+2026-02-17 10:51:12 -   9593d5c update
+2026-02-17 10:51:12 -   4942d6b GedasKr Structure Data Quality Update
+2026-02-17 10:51:12 -   4817753 add model stg_products
+2026-02-17 10:51:12 -   0da8764 update macro
+2026-02-17 10:51:13 - Detailed change information:
+2026-02-17 10:51:13 -   2026-02-17 10:51:12 - Checking file: burga_shopify/models/marts/shopify/shopify_transactions.sql
+2026-02-17 10:51:13 -   2026-02-17 10:51:12 - Previous commit: bac327d490ad5c27a3640a50eda9839ba9db83b3
+2026-02-17 10:51:13 -   2026-02-17 10:51:12 - Current commit: 10df329b2465bf25525742eb96fdd7d55d7f1475
+2026-02-17 10:51:13 -   2026-02-17 10:51:12 - Git history:
+2026-02-17 10:51:13 -   2026-02-17 10:51:13 - File exists in previous commit
+2026-02-17 10:51:13 -   Change type: M (Modified)
+2026-02-17 10:51:13 -   Status: Not first deployment
+2026-02-17 10:51:13 - File exists in previous commit
+2026-02-17 10:51:13 - Full changes information:
+2026-02-17 10:51:13 -   - Model path: burga_shopify/models/marts/shopify/shopify_transactions.sql
+2026-02-17 10:51:13 -   - First commit: 
+2026-02-17 10:51:13 -   - Current changes: 
+2026-02-17 10:51:13 -   - Is new in current commit: false
+2026-02-17 10:51:13 - âœ“ Model exists and was modified in current commit
+2026-02-17 10:51:13 - Processing model: refund_items_bc
+2026-02-17 10:51:13 - Found model path in changed files: burga_shopify/models/marts/shopify_bc/refund_items_bc.sql
+2026-02-17 10:51:13 - Checking if burga_shopify/models/marts/shopify_bc/refund_items_bc.sql existed in git history before current commit...
+2026-02-17 10:51:13 - First commit that added this file: 
+2026-02-17 10:51:13 - Current changes status: 
+2026-02-17 10:51:13 - Running git diff command: git diff --name-status bac327d490ad5c27a3640a50eda9839ba9db83b3 10df329b2465bf25525742eb96fdd7d55d7f1475 -- burga_shopify/models/marts/shopify_bc/refund_items_bc.sql
+2026-02-17 10:51:13 - Full git diff output:
+2026-02-17 10:51:13 - Git log between commits:
+2026-02-17 10:51:13 -   10df329 Merge pull request #96 from UAB-Hautica/DD_2026_02_16_LS_stg_products
+2026-02-17 10:51:13 -   8badc70 PR_AGENT Updates
+2026-02-17 10:51:13 -   7ab17a9 update_sqlfluff_rules
+2026-02-17 10:51:13 -   9593d5c update
+2026-02-17 10:51:13 -   4942d6b GedasKr Structure Data Quality Update
+2026-02-17 10:51:13 -   4817753 add model stg_products
+2026-02-17 10:51:13 -   0da8764 update macro
+2026-02-17 10:51:13 - Detailed change information:
+2026-02-17 10:51:13 -   2026-02-17 10:51:13 - Checking file: burga_shopify/models/marts/shopify_bc/refund_items_bc.sql
+2026-02-17 10:51:13 -   2026-02-17 10:51:13 - Previous commit: bac327d490ad5c27a3640a50eda9839ba9db83b3
+2026-02-17 10:51:13 -   2026-02-17 10:51:13 - Current commit: 10df329b2465bf25525742eb96fdd7d55d7f1475
+2026-02-17 10:51:13 -   2026-02-17 10:51:13 - Git history:
+2026-02-17 10:51:13 -   2026-02-17 10:51:13 - File exists in previous commit
+2026-02-17 10:51:13 -   Change type: M (Modified)
+2026-02-17 10:51:13 -   Status: Not first deployment
+2026-02-17 10:51:13 - File exists in previous commit
+2026-02-17 10:51:13 - Full changes information:
+2026-02-17 10:51:13 -   - Model path: burga_shopify/models/marts/shopify_bc/refund_items_bc.sql
+2026-02-17 10:51:13 -   - First commit: 
+2026-02-17 10:51:13 -   - Current changes: 
+2026-02-17 10:51:13 -   - Is new in current commit: false
+2026-02-17 10:51:13 - âœ“ Model exists and was modified in current commit
+2026-02-17 10:51:13 - Processing model: refund_orders_bc
+2026-02-17 10:51:13 - Found model path in changed files: burga_shopify/models/marts/shopify_bc/refund_orders_bc.sql
+2026-02-17 10:51:13 - Checking if burga_shopify/models/marts/shopify_bc/refund_orders_bc.sql existed in git history before current commit...
+2026-02-17 10:51:13 - First commit that added this file: 
+2026-02-17 10:51:13 - Current changes status: 
+2026-02-17 10:51:13 - Running git diff command: git diff --name-status bac327d490ad5c27a3640a50eda9839ba9db83b3 10df329b2465bf25525742eb96fdd7d55d7f1475 -- burga_shopify/models/marts/shopify_bc/refund_orders_bc.sql
+2026-02-17 10:51:13 - Full git diff output:
+2026-02-17 10:51:13 - Git log between commits:
+2026-02-17 10:51:13 -   10df329 Merge pull request #96 from UAB-Hautica/DD_2026_02_16_LS_stg_products
+2026-02-17 10:51:13 -   8badc70 PR_AGENT Updates
+2026-02-17 10:51:13 -   7ab17a9 update_sqlfluff_rules
+2026-02-17 10:51:13 -   9593d5c update
+2026-02-17 10:51:13 -   4942d6b GedasKr Structure Data Quality Update
+2026-02-17 10:51:13 -   4817753 add model stg_products
+2026-02-17 10:51:13 -   0da8764 update macro
+2026-02-17 10:51:13 - Detailed change information:
+2026-02-17 10:51:13 -   2026-02-17 10:51:13 - Checking file: burga_shopify/models/marts/shopify_bc/refund_orders_bc.sql
+2026-02-17 10:51:13 -   2026-02-17 10:51:13 - Previous commit: bac327d490ad5c27a3640a50eda9839ba9db83b3
+2026-02-17 10:51:13 -   2026-02-17 10:51:13 - Current commit: 10df329b2465bf25525742eb96fdd7d55d7f1475
+2026-02-17 10:51:13 -   2026-02-17 10:51:13 - Git history:
+2026-02-17 10:51:13 -   2026-02-17 10:51:13 - File exists in previous commit
+2026-02-17 10:51:13 -   Change type: M (Modified)
+2026-02-17 10:51:13 -   Status: Not first deployment
+2026-02-17 10:51:13 - File exists in previous commit
+2026-02-17 10:51:13 - Full changes information:
+2026-02-17 10:51:13 -   - Model path: burga_shopify/models/marts/shopify_bc/refund_orders_bc.sql
+2026-02-17 10:51:13 -   - First commit: 
+2026-02-17 10:51:13 -   - Current changes: 
+2026-02-17 10:51:13 -   - Is new in current commit: false
+2026-02-17 10:51:13 - âœ“ Model exists and was modified in current commit
+2026-02-17 10:51:13 - Processing model: finance_gift_card_sales
+2026-02-17 10:51:13 - Found model path in changed files: burga_shopify/models/marts/shopify_finance/finance_gift_card_sales.sql
+2026-02-17 10:51:13 - Checking if burga_shopify/models/marts/shopify_finance/finance_gift_card_sales.sql existed in git history before current commit...
+2026-02-17 10:51:13 - First commit that added this file: 
+2026-02-17 10:51:13 - Current changes status: 
+2026-02-17 10:51:13 - Running git diff command: git diff --name-status bac327d490ad5c27a3640a50eda9839ba9db83b3 10df329b2465bf25525742eb96fdd7d55d7f1475 -- burga_shopify/models/marts/shopify_finance/finance_gift_card_sales.sql
+2026-02-17 10:51:13 - Full git diff output:
+2026-02-17 10:51:13 - Git log between commits:
+2026-02-17 10:51:13 -   10df329 Merge pull request #96 from UAB-Hautica/DD_2026_02_16_LS_stg_products
+2026-02-17 10:51:13 -   8badc70 PR_AGENT Updates
+2026-02-17 10:51:13 -   7ab17a9 update_sqlfluff_rules
+2026-02-17 10:51:13 -   9593d5c update
+2026-02-17 10:51:13 -   4942d6b GedasKr Structure Data Quality Update
+2026-02-17 10:51:13 -   4817753 add model stg_products
+2026-02-17 10:51:13 -   0da8764 update macro
+2026-02-17 10:51:13 - Detailed change information:
+2026-02-17 10:51:13 -   2026-02-17 10:51:13 - Checking file: burga_shopify/models/marts/shopify_finance/finance_gift_card_sales.sql
+2026-02-17 10:51:13 -   2026-02-17 10:51:13 - Previous commit: bac327d490ad5c27a3640a50eda9839ba9db83b3
+2026-02-17 10:51:13 -   2026-02-17 10:51:13 - Current commit: 10df329b2465bf25525742eb96fdd7d55d7f1475
+2026-02-17 10:51:13 -   2026-02-17 10:51:13 - Git history:
+2026-02-17 10:51:13 -   2026-02-17 10:51:13 - File exists in previous commit
+2026-02-17 10:51:13 -   Change type: M (Modified)
+2026-02-17 10:51:13 -   Status: Not first deployment
+2026-02-17 10:51:13 - File exists in previous commit
+2026-02-17 10:51:13 - Full changes information:
+2026-02-17 10:51:13 -   - Model path: burga_shopify/models/marts/shopify_finance/finance_gift_card_sales.sql
+2026-02-17 10:51:13 -   - First commit: 
+2026-02-17 10:51:13 -   - Current changes: 
+2026-02-17 10:51:13 -   - Is new in current commit: false
+2026-02-17 10:51:13 - âœ“ Model exists and was modified in current commit
+2026-02-17 10:51:13 - Processing model: finance_gift_card_usage
+2026-02-17 10:51:13 - Found model path in changed files: burga_shopify/models/marts/shopify_finance/finance_gift_card_usage.sql
+2026-02-17 10:51:13 - Checking if burga_shopify/models/marts/shopify_finance/finance_gift_card_usage.sql existed in git history before current commit...
+2026-02-17 10:51:13 - First commit that added this file: 
+2026-02-17 10:51:13 - Current changes status: 
+2026-02-17 10:51:13 - Running git diff command: git diff --name-status bac327d490ad5c27a3640a50eda9839ba9db83b3 10df329b2465bf25525742eb96fdd7d55d7f1475 -- burga_shopify/models/marts/shopify_finance/finance_gift_card_usage.sql
+2026-02-17 10:51:13 - Full git diff output:
+2026-02-17 10:51:13 - Git log between commits:
+2026-02-17 10:51:13 -   10df329 Merge pull request #96 from UAB-Hautica/DD_2026_02_16_LS_stg_products
+2026-02-17 10:51:13 -   8badc70 PR_AGENT Updates
+2026-02-17 10:51:13 -   7ab17a9 update_sqlfluff_rules
+2026-02-17 10:51:13 -   9593d5c update
+2026-02-17 10:51:13 -   4942d6b GedasKr Structure Data Quality Update
+2026-02-17 10:51:13 -   4817753 add model stg_products
+2026-02-17 10:51:13 -   0da8764 update macro
+2026-02-17 10:51:13 - Detailed change information:
+2026-02-17 10:51:13 -   2026-02-17 10:51:13 - Checking file: burga_shopify/models/marts/shopify_finance/finance_gift_card_usage.sql
+2026-02-17 10:51:13 -   2026-02-17 10:51:13 - Previous commit: bac327d490ad5c27a3640a50eda9839ba9db83b3
+2026-02-17 10:51:13 -   2026-02-17 10:51:13 - Current commit: 10df329b2465bf25525742eb96fdd7d55d7f1475
+2026-02-17 10:51:13 -   2026-02-17 10:51:13 - Git history:
+2026-02-17 10:51:13 -   2026-02-17 10:51:13 - File exists in previous commit
+2026-02-17 10:51:13 -   Change type: M (Modified)
+2026-02-17 10:51:13 -   Status: Not first deployment
+2026-02-17 10:51:13 - File exists in previous commit
+2026-02-17 10:51:13 - Full changes information:
+2026-02-17 10:51:13 -   - Model path: burga_shopify/models/marts/shopify_finance/finance_gift_card_usage.sql
+2026-02-17 10:51:13 -   - First commit: 
+2026-02-17 10:51:13 -   - Current changes: 
+2026-02-17 10:51:13 -   - Is new in current commit: false
+2026-02-17 10:51:13 - âœ“ Model exists and was modified in current commit
+2026-02-17 10:51:13 - Processing model: finance_orders
+2026-02-17 10:51:13 - Found model path in changed files: burga_shopify/models/marts/shopify_finance/finance_orders.sql
+2026-02-17 10:51:13 - Checking if burga_shopify/models/marts/shopify_finance/finance_orders.sql existed in git history before current commit...
+2026-02-17 10:51:13 - First commit that added this file: 
+2026-02-17 10:51:13 - Current changes status: 
+2026-02-17 10:51:13 - Running git diff command: git diff --name-status bac327d490ad5c27a3640a50eda9839ba9db83b3 10df329b2465bf25525742eb96fdd7d55d7f1475 -- burga_shopify/models/marts/shopify_finance/finance_orders.sql
+2026-02-17 10:51:13 - Full git diff output:
+2026-02-17 10:51:13 - Git log between commits:
+2026-02-17 10:51:13 -   10df329 Merge pull request #96 from UAB-Hautica/DD_2026_02_16_LS_stg_products
+2026-02-17 10:51:13 -   8badc70 PR_AGENT Updates
+2026-02-17 10:51:13 -   7ab17a9 update_sqlfluff_rules
+2026-02-17 10:51:13 -   9593d5c update
+2026-02-17 10:51:13 -   4942d6b GedasKr Structure Data Quality Update
+2026-02-17 10:51:13 -   4817753 add model stg_products
+2026-02-17 10:51:13 -   0da8764 update macro
+2026-02-17 10:51:13 - Detailed change information:
+2026-02-17 10:51:13 -   2026-02-17 10:51:13 - Checking file: burga_shopify/models/marts/shopify_finance/finance_orders.sql
+2026-02-17 10:51:13 -   2026-02-17 10:51:13 - Previous commit: bac327d490ad5c27a3640a50eda9839ba9db83b3
+2026-02-17 10:51:13 -   2026-02-17 10:51:13 - Current commit: 10df329b2465bf25525742eb96fdd7d55d7f1475
+2026-02-17 10:51:13 -   2026-02-17 10:51:13 - Git history:
+2026-02-17 10:51:13 -   2026-02-17 10:51:13 - File exists in previous commit
+2026-02-17 10:51:13 -   Change type: M (Modified)
+2026-02-17 10:51:13 -   Status: Not first deployment
+2026-02-17 10:51:13 - File exists in previous commit
+2026-02-17 10:51:13 - Full changes information:
+2026-02-17 10:51:13 -   - Model path: burga_shopify/models/marts/shopify_finance/finance_orders.sql
+2026-02-17 10:51:13 -   - First commit: 
+2026-02-17 10:51:13 -   - Current changes: 
+2026-02-17 10:51:13 -   - Is new in current commit: false
+2026-02-17 10:51:13 - âœ“ Model exists and was modified in current commit
+2026-02-17 10:51:13 - Processing model: stg_influencers_archive_daily_report
+2026-02-17 10:51:13 - Found model path in changed files: burga_shopify/models/staging/raw_sys_burga_sheets/stg_influencers_archive_daily_report.sql
+2026-02-17 10:51:13 - Checking if burga_shopify/models/staging/raw_sys_burga_sheets/stg_influencers_archive_daily_report.sql existed in git history before current commit...
+2026-02-17 10:51:13 - First commit that added this file: 
+2026-02-17 10:51:13 - Current changes status: 
+2026-02-17 10:51:13 - Running git diff command: git diff --name-status bac327d490ad5c27a3640a50eda9839ba9db83b3 10df329b2465bf25525742eb96fdd7d55d7f1475 -- burga_shopify/models/staging/raw_sys_burga_sheets/stg_influencers_archive_daily_report.sql
+2026-02-17 10:51:13 - Full git diff output:
+2026-02-17 10:51:13 - Git log between commits:
+2026-02-17 10:51:13 -   10df329 Merge pull request #96 from UAB-Hautica/DD_2026_02_16_LS_stg_products
+2026-02-17 10:51:13 -   8badc70 PR_AGENT Updates
+2026-02-17 10:51:13 -   7ab17a9 update_sqlfluff_rules
+2026-02-17 10:51:13 -   9593d5c update
+2026-02-17 10:51:13 -   4942d6b GedasKr Structure Data Quality Update
+2026-02-17 10:51:13 -   4817753 add model stg_products
+2026-02-17 10:51:13 -   0da8764 update macro
+2026-02-17 10:51:13 - Detailed change information:
+2026-02-17 10:51:13 -   2026-02-17 10:51:13 - Checking file: burga_shopify/models/staging/raw_sys_burga_sheets/stg_influencers_archive_daily_report.sql
+2026-02-17 10:51:13 -   2026-02-17 10:51:13 - Previous commit: bac327d490ad5c27a3640a50eda9839ba9db83b3
+2026-02-17 10:51:13 -   2026-02-17 10:51:13 - Current commit: 10df329b2465bf25525742eb96fdd7d55d7f1475
+2026-02-17 10:51:13 -   2026-02-17 10:51:13 - Git history:
+2026-02-17 10:51:13 -   2026-02-17 10:51:13 - File exists in previous commit
+2026-02-17 10:51:13 -   Change type: M (Modified)
+2026-02-17 10:51:13 -   Status: Not first deployment
+2026-02-17 10:51:13 - File exists in previous commit
+2026-02-17 10:51:13 - Full changes information:
+2026-02-17 10:51:13 -   - Model path: burga_shopify/models/staging/raw_sys_burga_sheets/stg_influencers_archive_daily_report.sql
+2026-02-17 10:51:13 -   - First commit: 
+2026-02-17 10:51:13 -   - Current changes: 
+2026-02-17 10:51:13 -   - Is new in current commit: false
+2026-02-17 10:51:13 - âœ“ Model exists and was modified in current commit
+2026-02-17 10:51:13 - Processing model: stg_influencers_daily_report
+2026-02-17 10:51:13 - Found model path in changed files: burga_shopify/models/staging/raw_sys_burga_sheets/stg_influencers_daily_report.sql
+2026-02-17 10:51:13 - Checking if burga_shopify/models/staging/raw_sys_burga_sheets/stg_influencers_daily_report.sql existed in git history before current commit...
+2026-02-17 10:51:13 - First commit that added this file: 
+2026-02-17 10:51:13 - Current changes status: 
+2026-02-17 10:51:13 - Running git diff command: git diff --name-status bac327d490ad5c27a3640a50eda9839ba9db83b3 10df329b2465bf25525742eb96fdd7d55d7f1475 -- burga_shopify/models/staging/raw_sys_burga_sheets/stg_influencers_daily_report.sql
+2026-02-17 10:51:13 - Full git diff output:
+2026-02-17 10:51:13 - Git log between commits:
+2026-02-17 10:51:13 -   10df329 Merge pull request #96 from UAB-Hautica/DD_2026_02_16_LS_stg_products
+2026-02-17 10:51:13 -   8badc70 PR_AGENT Updates
+2026-02-17 10:51:13 -   7ab17a9 update_sqlfluff_rules
+2026-02-17 10:51:13 -   9593d5c update
+2026-02-17 10:51:13 -   4942d6b GedasKr Structure Data Quality Update
+2026-02-17 10:51:13 -   4817753 add model stg_products
+2026-02-17 10:51:13 -   0da8764 update macro
+2026-02-17 10:51:13 - Detailed change information:
+2026-02-17 10:51:13 -   2026-02-17 10:51:13 - Checking file: burga_shopify/models/staging/raw_sys_burga_sheets/stg_influencers_daily_report.sql
+2026-02-17 10:51:13 -   2026-02-17 10:51:13 - Previous commit: bac327d490ad5c27a3640a50eda9839ba9db83b3
+2026-02-17 10:51:13 -   2026-02-17 10:51:13 - Current commit: 10df329b2465bf25525742eb96fdd7d55d7f1475
+2026-02-17 10:51:13 -   2026-02-17 10:51:13 - Git history:
+2026-02-17 10:51:13 -   2026-02-17 10:51:13 - File exists in previous commit
+2026-02-17 10:51:13 -   Change type: M (Modified)
+2026-02-17 10:51:13 -   Status: Not first deployment
+2026-02-17 10:51:13 - File exists in previous commit
+2026-02-17 10:51:13 - Full changes information:
+2026-02-17 10:51:13 -   - Model path: burga_shopify/models/staging/raw_sys_burga_sheets/stg_influencers_daily_report.sql
+2026-02-17 10:51:13 -   - First commit: 
+2026-02-17 10:51:13 -   - Current changes: 
+2026-02-17 10:51:13 -   - Is new in current commit: false
+2026-02-17 10:51:13 - âœ“ Model exists and was modified in current commit
+2026-02-17 10:51:13 - Processing model: stg_questions
+2026-02-17 10:51:13 - Found model path in changed files: burga_shopify/models/staging/raw_sys_fairing/stg_questions.sql
+2026-02-17 10:51:13 - Checking if burga_shopify/models/staging/raw_sys_fairing/stg_questions.sql existed in git history before current commit...
+2026-02-17 10:51:13 - First commit that added this file: 
+2026-02-17 10:51:13 - Current changes status: 
+2026-02-17 10:51:13 - Running git diff command: git diff --name-status bac327d490ad5c27a3640a50eda9839ba9db83b3 10df329b2465bf25525742eb96fdd7d55d7f1475 -- burga_shopify/models/staging/raw_sys_fairing/stg_questions.sql
+2026-02-17 10:51:13 - Full git diff output:
+2026-02-17 10:51:13 - Git log between commits:
+2026-02-17 10:51:13 -   10df329 Merge pull request #96 from UAB-Hautica/DD_2026_02_16_LS_stg_products
+2026-02-17 10:51:13 -   8badc70 PR_AGENT Updates
+2026-02-17 10:51:13 -   7ab17a9 update_sqlfluff_rules
+2026-02-17 10:51:13 -   9593d5c update
+2026-02-17 10:51:13 -   4942d6b GedasKr Structure Data Quality Update
+2026-02-17 10:51:13 -   4817753 add model stg_products
+2026-02-17 10:51:13 -   0da8764 update macro
+2026-02-17 10:51:13 - Detailed change information:
+2026-02-17 10:51:13 -   2026-02-17 10:51:13 - Checking file: burga_shopify/models/staging/raw_sys_fairing/stg_questions.sql
+2026-02-17 10:51:13 -   2026-02-17 10:51:13 - Previous commit: bac327d490ad5c27a3640a50eda9839ba9db83b3
+2026-02-17 10:51:13 -   2026-02-17 10:51:13 - Current commit: 10df329b2465bf25525742eb96fdd7d55d7f1475
+2026-02-17 10:51:13 -   2026-02-17 10:51:13 - Git history:
+2026-02-17 10:51:13 -   2026-02-17 10:51:13 - File exists in previous commit
+2026-02-17 10:51:13 -   Change type: M (Modified)
+2026-02-17 10:51:13 -   Status: Not first deployment
+2026-02-17 10:51:13 - File exists in previous commit
+2026-02-17 10:51:13 - Full changes information:
+2026-02-17 10:51:13 -   - Model path: burga_shopify/models/staging/raw_sys_fairing/stg_questions.sql
+2026-02-17 10:51:13 -   - First commit: 
+2026-02-17 10:51:13 -   - Current changes: 
+2026-02-17 10:51:13 -   - Is new in current commit: false
+2026-02-17 10:51:13 - âœ“ Model exists and was modified in current commit
+2026-02-17 10:51:13 - Processing model: stg_responses
+2026-02-17 10:51:13 - Found model path in changed files: burga_shopify/models/staging/raw_sys_fairing/stg_responses.sql
+2026-02-17 10:51:13 - Checking if burga_shopify/models/staging/raw_sys_fairing/stg_responses.sql existed in git history before current commit...
+2026-02-17 10:51:13 - First commit that added this file: 
+2026-02-17 10:51:13 - Current changes status: 
+2026-02-17 10:51:13 - Running git diff command: git diff --name-status bac327d490ad5c27a3640a50eda9839ba9db83b3 10df329b2465bf25525742eb96fdd7d55d7f1475 -- burga_shopify/models/staging/raw_sys_fairing/stg_responses.sql
+2026-02-17 10:51:13 - Full git diff output:
+2026-02-17 10:51:13 - Git log between commits:
+2026-02-17 10:51:13 -   10df329 Merge pull request #96 from UAB-Hautica/DD_2026_02_16_LS_stg_products
+2026-02-17 10:51:13 -   8badc70 PR_AGENT Updates
+2026-02-17 10:51:13 -   7ab17a9 update_sqlfluff_rules
+2026-02-17 10:51:13 -   9593d5c update
+2026-02-17 10:51:14 -   4942d6b GedasKr Structure Data Quality Update
+2026-02-17 10:51:14 -   4817753 add model stg_products
+2026-02-17 10:51:14 -   0da8764 update macro
+2026-02-17 10:51:14 - Detailed change information:
+2026-02-17 10:51:14 -   2026-02-17 10:51:14 - Checking file: burga_shopify/models/staging/raw_sys_fairing/stg_responses.sql
+2026-02-17 10:51:14 -   2026-02-17 10:51:14 - Previous commit: bac327d490ad5c27a3640a50eda9839ba9db83b3
+2026-02-17 10:51:14 -   2026-02-17 10:51:14 - Current commit: 10df329b2465bf25525742eb96fdd7d55d7f1475
+2026-02-17 10:51:14 -   2026-02-17 10:51:14 - Git history:
+2026-02-17 10:51:14 -   2026-02-17 10:51:14 - File exists in previous commit
+2026-02-17 10:51:14 -   Change type: M (Modified)
+2026-02-17 10:51:14 -   Status: Not first deployment
+2026-02-17 10:51:14 - File exists in previous commit
+2026-02-17 10:51:14 - Full changes information:
+2026-02-17 10:51:14 -   - Model path: burga_shopify/models/staging/raw_sys_fairing/stg_responses.sql
+2026-02-17 10:51:14 -   - First commit: 
+2026-02-17 10:51:14 -   - Current changes: 
+2026-02-17 10:51:14 -   - Is new in current commit: false
+2026-02-17 10:51:14 - âœ“ Model exists and was modified in current commit
+2026-02-17 10:51:14 - Running full refresh for incremental models: int_influencers_historical_report,shopify_orders,shopify_refund_items,shopify_refund_orders,shopify_transactions,refund_items_bc,refund_orders_bc,finance_gift_card_sales,finance_gift_card_usage,finance_orders,stg_influencers_archive_daily_report,stg_influencers_daily_report,stg_questions,stg_responses
+[0m10:51:15  Running with dbt=1.10.13
+[0m10:51:18  Registered adapter: bigquery=1.9.2
+[0m10:51:19  [[33mWARNING[0m]: Configuration paths exist in your dbt_project.yml file which do not apply to any resources.
+There are 3 unused configuration paths:
+- models.re_data.internal
+- models.re_data.logs
+- models.re_data
+[0m10:51:20  Found 82 models, 3 analyses, 1 seed, 72 data tests, 242 sources, 683 macros
+[0m10:51:20  The selection criterion 'int_influencers_historical_report,shopify_orders,shopify_refund_items,shopify_refund_orders,shopify_transactions,refund_items_bc,refund_orders_bc,finance_gift_card_sales,finance_gift_card_usage,finance_orders,stg_influencers_archive_daily_report,stg_influencers_daily_report,stg_questions,stg_responses' does not match any enabled nodes
+[0m10:51:20  The selection criterion 'int_influencers_historical_report,shopify_orders,shopify_refund_items,shopify_refund_orders,shopify_transactions,refund_items_bc,refund_orders_bc,finance_gift_card_sales,finance_gift_card_usage,finance_orders,stg_influencers_archive_daily_report,stg_influencers_daily_report,stg_questions,stg_responses' does not match any enabled nodes
+[0m10:51:20  The selection criterion 'int_influencers_historical_report,shopify_orders,shopify_refund_items,shopify_refund_orders,shopify_transactions,refund_items_bc,refund_orders_bc,finance_gift_card_sales,finance_gift_card_usage,finance_orders,stg_influencers_archive_daily_report,stg_influencers_daily_report,stg_questions,stg_responses' does not match any enabled nodes
+[0m10:51:20  Nothing to do. Try checking your model configs and model specification args
+2026-02-17 10:51:22 - Skipping build of the rest of the project (use --build-rest to enable)
+2026-02-17 10:51:22 - NOTE: The rest of the project will be built by Airflow DAGs in production
+2026-02-17 10:51:22 - Summary:
+2026-02-17 10:51:22 - - Changed SQL files: 153
+2026-02-17 10:51:22 - - Incremental models: 14
+2026-02-17 10:51:22 - - Models that would be full-refreshed: int_influencers_historical_report,shopify_orders,shopify_refund_items,shopify_refund_orders,shopify_transactions,refund_items_bc,refund_orders_bc,finance_gift_card_sales,finance_gift_card_usage,finance_orders,stg_influencers_archive_daily_report,stg_influencers_daily_report,stg_questions,stg_responses
+2026-02-17 10:51:22 - Full report saved to ./refresh_report.json
+2026-02-17 10:51:22 - Report contents:
+{
+  "execution_time": "2026-02-17T10:50:24Z",
+  "dry_run": false,
+  "changed_files": [
+    "burga_shopify/dbt_packages/codegen/integration_tests/models/child_model.sql",
+    "burga_shopify/dbt_packages/codegen/integration_tests/models/model_data_a.sql",
+    "burga_shopify/dbt_packages/codegen/integration_tests/models/model_from_source.sql",
+    "burga_shopify/dbt_packages/codegen/integration_tests/models/model_incremental.sql",
+    "burga_shopify/dbt_packages/codegen/integration_tests/models/model_repeated.sql",
+    "burga_shopify/dbt_packages/codegen/integration_tests/models/model_struct.sql",
+    "burga_shopify/dbt_packages/codegen/integration_tests/models/model_without_any_ctes.sql",
+    "burga_shopify/dbt_packages/codegen/integration_tests/models/model_without_import_ctes.sql",
+    "burga_shopify/dbt_packages/codegen/integration_tests/tests/test_generate_base_models.sql",
+    "burga_shopify/dbt_packages/codegen/integration_tests/tests/test_generate_base_models_all_args.sql",
+    "burga_shopify/dbt_packages/codegen/integration_tests/tests/test_generate_base_models_case_sensitive.sql",
+    "burga_shopify/dbt_packages/codegen/integration_tests/tests/test_generate_base_models_leading.sql",
+    "burga_shopify/dbt_packages/codegen/integration_tests/tests/test_generate_model_yaml_multiple_models.sql",
+    "burga_shopify/dbt_packages/codegen/integration_tests/tests/test_helper_get_models.sql",
+    "burga_shopify/dbt_packages/codegen/macros/create_base_models.sql",
+    "burga_shopify/dbt_packages/dbt_airflow_macros/integration_tests/postgres/models/test_macros.sql",
+    "burga_shopify/dbt_packages/dbt_utils/integration_tests/models/datetime/test_date_spine.sql",
+    "burga_shopify/dbt_packages/dbt_utils/integration_tests/models/generic_tests/recency_time_excluded.sql",
+    "burga_shopify/dbt_packages/dbt_utils/integration_tests/models/generic_tests/recency_time_included.sql",
+    "burga_shopify/dbt_packages/dbt_utils/integration_tests/models/generic_tests/test_equal_column_subset.sql",
+    "burga_shopify/dbt_packages/dbt_utils/integration_tests/models/generic_tests/test_equal_rowcount.sql",
+    "burga_shopify/dbt_packages/dbt_utils/integration_tests/models/generic_tests/test_fewer_rows_than.sql",
+    "burga_shopify/dbt_packages/dbt_utils/integration_tests/models/geo/test_haversine_distance_km.sql",
+    "burga_shopify/dbt_packages/dbt_utils/integration_tests/models/geo/test_haversine_distance_mi.sql",
+    "burga_shopify/dbt_packages/dbt_utils/integration_tests/models/sql/test_deduplicate.sql",
+    "burga_shopify/dbt_packages/dbt_utils/integration_tests/models/sql/test_generate_series.sql",
+    "burga_shopify/dbt_packages/dbt_utils/integration_tests/models/sql/test_generate_surrogate_key.sql",
+    "burga_shopify/dbt_packages/dbt_utils/integration_tests/models/sql/test_get_column_values.sql",
+    "burga_shopify/dbt_packages/dbt_utils/integration_tests/models/sql/test_get_column_values_where.sql",
+    "burga_shopify/dbt_packages/dbt_utils/integration_tests/models/sql/test_get_filtered_columns_in_relation.sql",
+    "burga_shopify/dbt_packages/dbt_utils/integration_tests/models/sql/test_get_relations_by_pattern.sql",
+    "burga_shopify/dbt_packages/dbt_utils/integration_tests/models/sql/test_get_relations_by_prefix_and_union.sql",
+    "burga_shopify/dbt_packages/dbt_utils/integration_tests/models/sql/test_get_single_value.sql",
+    "burga_shopify/dbt_packages/dbt_utils/integration_tests/models/sql/test_get_single_value_default.sql",
+    "burga_shopify/dbt_packages/dbt_utils/integration_tests/models/sql/test_groupby.sql",
+    "burga_shopify/dbt_packages/dbt_utils/integration_tests/models/sql/test_not_empty_string_failing.sql",
+    "burga_shopify/dbt_packages/dbt_utils/integration_tests/models/sql/test_not_empty_string_passing.sql",
+    "burga_shopify/dbt_packages/dbt_utils/integration_tests/models/sql/test_nullcheck_table.sql",
+    "burga_shopify/dbt_packages/dbt_utils/integration_tests/models/sql/test_pivot.sql",
+    "burga_shopify/dbt_packages/dbt_utils/integration_tests/models/sql/test_pivot_apostrophe.sql",
+    "burga_shopify/dbt_packages/dbt_utils/integration_tests/models/sql/test_safe_add.sql",
+    "burga_shopify/dbt_packages/dbt_utils/integration_tests/models/sql/test_safe_divide.sql",
+    "burga_shopify/dbt_packages/dbt_utils/integration_tests/models/sql/test_safe_subtract.sql",
+    "burga_shopify/dbt_packages/dbt_utils/integration_tests/models/sql/test_star.sql",
+    "burga_shopify/dbt_packages/dbt_utils/integration_tests/models/sql/test_star_aggregate.sql",
+    "burga_shopify/dbt_packages/dbt_utils/integration_tests/models/sql/test_star_no_columns.sql",
+    "burga_shopify/dbt_packages/dbt_utils/integration_tests/models/sql/test_star_prefix_suffix.sql",
+    "burga_shopify/dbt_packages/dbt_utils/integration_tests/models/sql/test_star_quote_identifiers.sql",
+    "burga_shopify/dbt_packages/dbt_utils/integration_tests/models/sql/test_star_uppercase.sql",
+    "burga_shopify/dbt_packages/dbt_utils/integration_tests/models/sql/test_union.sql",
+    "burga_shopify/dbt_packages/dbt_utils/integration_tests/models/sql/test_union_base.sql",
+    "burga_shopify/dbt_packages/dbt_utils/integration_tests/models/sql/test_union_exclude_base_lowercase.sql",
+    "burga_shopify/dbt_packages/dbt_utils/integration_tests/models/sql/test_union_exclude_base_uppercase.sql",
+    "burga_shopify/dbt_packages/dbt_utils/integration_tests/models/sql/test_union_exclude_lowercase.sql",
+    "burga_shopify/dbt_packages/dbt_utils/integration_tests/models/sql/test_union_exclude_uppercase.sql",
+    "burga_shopify/dbt_packages/dbt_utils/integration_tests/models/sql/test_union_no_source_column.sql",
+    "burga_shopify/dbt_packages/dbt_utils/integration_tests/models/sql/test_union_where.sql",
+    "burga_shopify/dbt_packages/dbt_utils/integration_tests/models/sql/test_union_where_base.sql",
+    "burga_shopify/dbt_packages/dbt_utils/integration_tests/models/sql/test_unpivot.sql",
+    "burga_shopify/dbt_packages/dbt_utils/integration_tests/models/sql/test_unpivot_bool.sql",
+    "burga_shopify/dbt_packages/dbt_utils/integration_tests/models/sql/test_width_bucket.sql",
+    "burga_shopify/dbt_packages/dbt_utils/integration_tests/models/web/test_url_host.sql",
+    "burga_shopify/dbt_packages/dbt_utils/integration_tests/models/web/test_url_path.sql",
+    "burga_shopify/dbt_packages/dbt_utils/integration_tests/models/web/test_urls.sql",
+    "burga_shopify/dbt_packages/re_data/integration_tests/models/monitoring/test_re_data_anomalies.sql",
+    "burga_shopify/dbt_packages/re_data/integration_tests/models/monitoring/test_re_data_metrics.sql",
+    "burga_shopify/dbt_packages/re_data/integration_tests/models/monitoring/test_re_data_table_samples.sql",
+    "burga_shopify/dbt_packages/re_data/integration_tests/models/monitoring/test_re_data_test_history.sql",
+    "burga_shopify/dbt_packages/re_data/integration_tests/models/monitoring/test_re_data_z_score.sql",
+    "burga_shopify/dbt_packages/re_data/integration_tests/models/public_macros/cleaning/sanitized_user_data.sql",
+    "burga_shopify/dbt_packages/re_data/integration_tests/models/public_macros/filtering/deduplicated.sql",
+    "burga_shopify/dbt_packages/re_data/integration_tests/models/public_macros/filtering/duplicates.sql",
+    "burga_shopify/dbt_packages/re_data/integration_tests/models/public_macros/normalizing/us_states_normalized.sql",
+    "burga_shopify/dbt_packages/re_data/integration_tests/models/public_macros/validating/validated_date_and_time.sql",
+    "burga_shopify/dbt_packages/re_data/integration_tests/models/public_macros/validating/validated_emails.sql",
+    "burga_shopify/dbt_packages/re_data/integration_tests/models/public_macros/validating/validated_ips.sql",
+    "burga_shopify/dbt_packages/re_data/integration_tests/models/public_macros/validating/validated_numbers.sql",
+    "burga_shopify/dbt_packages/re_data/integration_tests/models/public_macros/validating/validated_uuids.sql",
+    "burga_shopify/dbt_packages/re_data/integration_tests/models/transformed/buy_events.sql",
+    "burga_shopify/dbt_packages/re_data/models/alerts/re_data_alerts.sql",
+    "burga_shopify/dbt_packages/re_data/models/alerts/re_data_anomalies.sql",
+    "burga_shopify/dbt_packages/re_data/models/alerts/re_data_schema_changes.sql",
+    "burga_shopify/dbt_packages/re_data/models/alerts/re_data_test_runs.sql",
+    "burga_shopify/dbt_packages/re_data/models/alerts/re_data_z_score.sql",
+    "burga_shopify/dbt_packages/re_data/models/internal/metrics/base/re_data_last_base_metrics_part0.sql",
+    "burga_shopify/dbt_packages/re_data/models/internal/metrics/base/re_data_last_base_metrics_part1.sql",
+    "burga_shopify/dbt_packages/re_data/models/internal/metrics/base/re_data_last_base_metrics_part2.sql",
+    "burga_shopify/dbt_packages/re_data/models/internal/metrics/base/re_data_last_base_metrics_part3.sql",
+    "burga_shopify/dbt_packages/re_data/models/internal/metrics/base/re_data_last_base_metrics_thread0.sql",
+    "burga_shopify/dbt_packages/re_data/models/internal/metrics/base/re_data_last_base_metrics_thread1.sql",
+    "burga_shopify/dbt_packages/re_data/models/internal/metrics/base/re_data_last_base_metrics_thread2.sql",
+    "burga_shopify/dbt_packages/re_data/models/internal/metrics/base/re_data_last_base_metrics_thread3.sql",
+    "burga_shopify/dbt_packages/re_data/models/internal/re_data_run_started_at.sql",
+    "burga_shopify/dbt_packages/re_data/models/internal/samples/re_data_last_table_samples.sql",
+    "burga_shopify/dbt_packages/re_data/models/internal/samples/re_data_last_table_samples_part.sql",
+    "burga_shopify/dbt_packages/re_data/models/meta/re_data_columns.sql",
+    "burga_shopify/dbt_packages/re_data/models/meta/re_data_monitored.sql",
+    "burga_shopify/dbt_packages/re_data/models/meta/re_data_selected.sql",
+    "burga_shopify/dbt_packages/re_data/models/metrics/final/re_data_metrics.sql",
+    "burga_shopify/dbt_packages/re_data/models/metrics/for_anomalies/re_data_last_metrics.sql",
+    "burga_shopify/dbt_packages/re_data/models/metrics/for_anomalies/re_data_last_stats.sql",
+    "burga_shopify/dbt_packages/re_data/models/metrics/types/base/re_data_base_metrics.sql",
+    "burga_shopify/dbt_packages/re_data/models/metrics/types/samples/re_data_table_samples.sql",
+    "burga_shopify/dbt_packages/re_data/models/metrics/types/schema/re_data_columns_over_time.sql",
+    "burga_shopify/models/intermediate/couriers/int_couriers_kolosus.sql",
+    "burga_shopify/models/intermediate/fairing/int_qa.sql",
+    "burga_shopify/models/intermediate/int_marketing/int_influencers_historical_report.sql",
+    "burga_shopify/models/intermediate/shopify/int_shopify_orders.sql",
+    "burga_shopify/models/intermediate/shopify/int_shopify_refunds_line_items.sql",
+    "burga_shopify/models/intermediate/shopify/int_shopify_shipping.sql",
+    "burga_shopify/models/intermediate/shopify/int_shopify_tax_lines.sql",
+    "burga_shopify/models/marts/marketing/ads/applovin_ads_performance.sql",
+    "burga_shopify/models/marts/marketing/ads/bing_ads_performance.sql",
+    "burga_shopify/models/marts/marketing/ads/facebook_ads_performance.sql",
+    "burga_shopify/models/marts/marketing/ads/pinterest_ads_performance.sql",
+    "burga_shopify/models/marts/marketing/ads/snapchat_ads_performance.sql",
+    "burga_shopify/models/marts/marketing/ads/tiktok_ads_performance.sql",
+    "burga_shopify/models/marts/marketing/influencers/marketing_influencers_summary.sql",
+    "burga_shopify/models/marts/shopify/shopify_orders.sql",
+    "burga_shopify/models/marts/shopify/shopify_refund_items.sql",
+    "burga_shopify/models/marts/shopify/shopify_refund_orders.sql",
+    "burga_shopify/models/marts/shopify/shopify_transactions.sql",
+    "burga_shopify/models/marts/shopify_bc/refund_items_bc.sql",
+    "burga_shopify/models/marts/shopify_bc/refund_orders_bc.sql",
+    "burga_shopify/models/marts/shopify_finance/finance_gift_card_sales.sql",
+    "burga_shopify/models/marts/shopify_finance/finance_gift_card_usage.sql",
+    "burga_shopify/models/marts/shopify_finance/finance_orders.sql",
+    "burga_shopify/models/staging/couriers/stg_all_couriers.sql",
+    "burga_shopify/models/staging/inventory/stg_mes_inventory.sql",
+    "burga_shopify/models/staging/kolosus/stg_kolosus_orders.sql",
+    "burga_shopify/models/staging/kolosus/stg_kolosus_shippments.sql",
+    "burga_shopify/models/staging/mappings/stg_mappings_canada_tax_rates.sql",
+    "burga_shopify/models/staging/mappings/stg_mappings_usa_sales_tax.sql",
+    "burga_shopify/models/staging/mappings/stg_mappings_vat_rates.sql",
+    "burga_shopify/models/staging/raw_sys_burga_sheets/stg_influencers_archive_daily_report.sql",
+    "burga_shopify/models/staging/raw_sys_burga_sheets/stg_influencers_daily_report.sql",
+    "burga_shopify/models/staging/raw_sys_fairing/stg_questions.sql",
+    "burga_shopify/models/staging/raw_sys_fairing/stg_responses.sql",
+    "burga_shopify/models/staging/raw_sys_mes_inventory/stg_mes_inventory_sku.sql",
+    "burga_shopify/models/staging/raw_sys_shopify/stg_discount_applications.sql",
+    "burga_shopify/models/staging/raw_sys_shopify/stg_fulfillment_line_items.sql",
+    "burga_shopify/models/staging/raw_sys_shopify/stg_gift_cards.sql",
+    "burga_shopify/models/staging/raw_sys_shopify/stg_line_item_discount_allocations.sql",
+    "burga_shopify/models/staging/raw_sys_shopify/stg_line_item_tax_lines.sql",
+    "burga_shopify/models/staging/raw_sys_shopify/stg_line_items.sql",
+    "burga_shopify/models/staging/raw_sys_shopify/stg_orders.sql",
+    "burga_shopify/models/staging/raw_sys_shopify/stg_products.sql",
+    "burga_shopify/models/staging/raw_sys_shopify/stg_refund_line_items.sql",
+    "burga_shopify/models/staging/raw_sys_shopify/stg_refunds.sql",
+    "burga_shopify/models/staging/raw_sys_shopify/stg_shipping_lines.sql",
+    "burga_shopify/models/staging/raw_sys_shopify/stg_shipping_tax_lines.sql",
+    "burga_shopify/models/staging/raw_sys_shopify/stg_tax_lines.sql",
+    "burga_shopify/models/staging/raw_sys_shopify/stg_transactions.sql"
+  ],
+  "incremental_models": [
+    "int_influencers_historical_report",
+    "shopify_orders",
+    "shopify_refund_items",
+    "shopify_refund_orders",
+    "shopify_transactions",
+    "refund_items_bc",
+    "refund_orders_bc",
+    "finance_gift_card_sales",
+    "finance_gift_card_usage",
+    "finance_orders",
+    "stg_influencers_archive_daily_report",
+    "stg_influencers_daily_report",
+    "stg_questions",
+    "stg_responses"
+  ],
+  "refresh_commands": [
+    "dbt",
+    "build",
+    "--select",
+    "int_influencers_historical_report",
+    "--full-refresh",
+    "dbt",
+    "build",
+    "--select",
+    "shopify_orders",
+    "--full-refresh",
+    "dbt",
+    "build",
+    "--select",
+    "shopify_refund_items",
+    "--full-refresh",
+    "dbt",
+    "build",
+    "--select",
+    "shopify_refund_orders",
+    "--full-refresh",
+    "dbt",
+    "build",
+    "--select",
+    "shopify_transactions",
+    "--full-refresh",
+    "dbt",
+    "build",
+    "--select",
+    "refund_items_bc",
+    "--full-refresh",
+    "dbt",
+    "build",
+    "--select",
+    "refund_orders_bc",
+    "--full-refresh",
+    "dbt",
+    "build",
+    "--select",
+    "finance_gift_card_sales",
+    "--full-refresh",
+    "dbt",
+    "build",
+    "--select",
+    "finance_gift_card_usage",
+    "--full-refresh",
+    "dbt",
+    "build",
+    "--select",
+    "finance_orders",
+    "--full-refresh",
+    "dbt",
+    "build",
+    "--select",
+    "stg_influencers_archive_daily_report",
+    "--full-refresh",
+    "dbt",
+    "build",
+    "--select",
+    "stg_influencers_daily_report",
+    "--full-refresh",
+    "dbt",
+    "build",
+    "--select",
+    "stg_questions",
+    "--full-refresh",
+    "dbt",
+    "build",
+    "--select",
+    "stg_responses",
+    "--full-refresh"
+  ],
+  "status": "completed",
+  "errors": [],
+  "message": "Successfully identified and processed incremental models"
+}
+2026-02-17 10:51:22 - Incremental refresh test completed successfully
+âš™ï¸ [PROCESS] Cleaning up temporary files...
+âœ… [SUCCESS] Cleanup completed
+===========================================
+ðŸ” [CHECK] Analyzing refresh results
+===========================================
+âš™ï¸ [PROCESS] Checking log file for errors...
+âŒ [ERROR] Error found in dbt refresh incremental modules procedure
+ðŸ“‹ [CONFIG] Log file line: 2026-02-17 10:50:50 - Analyzing model: test_not_empty_string_failing
+âŒ [ERROR] Error found in dbt refresh incremental modules procedure
+ðŸ“‹ [CONFIG] Log file line: 2026-02-17 10:50:50 - Looking for node: model.burga_shopify.test_not_empty_string_failing
+âŒ [ERROR] Error found in dbt refresh incremental modules procedure
+ðŸ“‹ [CONFIG] Log file line: 2026-02-17 10:50:51 - Model test_not_empty_string_failing is not incremental, skipping full-refresh
+âŒ [ERROR] Error found in dbt refresh incremental modules procedure
+ðŸ“‹ [CONFIG] Log file line: 2026-02-17 10:51:11 -   - dbt_packages/dbt_utils/integration_tests/models/sql/test_not_empty_string_failing.sql
+âŒ [ERROR] Error found in dbt refresh incremental modules procedure
+ðŸ“‹ [CONFIG] Log file line: "burga_shopify/dbt_packages/dbt_utils/integration_tests/models/sql/test_not_empty_string_failing.sql",
+âŒ [ERROR] The dbt refresh incremental modules procedure failed
+ðŸ“‹ [CONFIG] Please check the logs for details
