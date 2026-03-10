@@ -1,12 +1,31 @@
+# =============================================================================
+# CICD workflow template (GitLab) – Argo Workflows for dbt data models
+# =============================================================================
+# Key variables you can override:
+#   ARGO_SERVER           – Internal Argo server address (used by argo CLI when submitting).
+#   ARGO_SECURE           – 'false' when running from inside the cluster/network (e.g. same K8s);
+#                           'true' when connecting from outside with TLS.
+#   ARGO_EXTERNAL_ADDRESS – Your public domain for the workflow UI (e.g. workflows.data.example.com).
+#                           The generated workflow URL uses this so users can open the link.
+#   E2E_MODE_EMPTY        – When "True", MR E2E runs dbt with --empty (structure-only). Default: "True".
+#   CICD_WORKFLOWS_TEMPLATE_VERSION – Argo workflow repo tag/branch (e.g. "latest", "v0.1.4.1").
+#   STORAGE_CLASS         – Kubernetes storage class for workflow PVCs.
+# =============================================================================
+
 variables:
   ARGO_SERVER: "data-platform-argo-workflows-server.cicd-workflows:2746"
-  ARGO_CLI_VERSION: 'v3.7.6'
-  ARGO_HTTP1: 'true'  
-  ARGO_SECURE: 'true'
+  # Public host for workflow URL; set to your domain (e.g. workflows.data.hautica.io).
+  ARGO_EXTERNAL_ADDRESS: ""
+  ARGO_CLI_VERSION: 'v4.0.1'
+  ARGO_HTTP1: 'true'
+  # 'false' = running from inside cluster/network; 'true' = external with TLS.
+  ARGO_SECURE: 'false'
   ARGO_NAMESPACE: cicd-workflows
   CI_DEBUG_TRACE: "false"
   CICD_WORKFLOWS_TEMPLATE_VERSION: "latest"
   STORAGE_CLASS: "standard"
+  # E2E empty mode: dbt run uses --empty (structure-only validation) in MR E2E. Set "False" to run with real data.
+  E2E_MODE_EMPTY: "True"
   PS4: ""
 
 default:
@@ -54,10 +73,11 @@ validate_data_model_workflow_branch:
         --labels="project=${CI_PROJECT_NAME},commit=${CI_COMMIT_SHA},author=${GITLAB_USER_LOGIN},ci_job_id=${CI_JOB_ID},place=branch" \
         --generate-name="branch-${CI_PROJECT_NAME}-cicd-${CI_COMMIT_SHORT_SHA}-" \
         --watch --log
-      # Get workflow host address
+      # Get workflow host address (use ARGO_EXTERNAL_ADDRESS for user-facing URL when set)
       WORKFLOW_NAME=$(argo list --selector "commit=${CI_COMMIT_SHA},ci_job_id=${CI_JOB_ID},place=branch" -o name | cut -d'/' -f2)
       ARGO_HOST=$(echo $ARGO_SERVER | cut -d':' -f1)
-      WORKFLOW_URL="https://${ARGO_HOST}/workflows/${ARGO_NAMESPACE}/${WORKFLOW_NAME}"
+      ARGO_EXT_HOST="${ARGO_EXTERNAL_ADDRESS:-$ARGO_HOST}"
+      WORKFLOW_URL="https://${ARGO_EXT_HOST}/workflows/${ARGO_NAMESPACE}/${WORKFLOW_NAME}"
       # Check status and print colored URL
       if [ "$(argo list --status Failed --selector "commit=${CI_COMMIT_SHA},ci_job_id=${CI_JOB_ID},place=branch" | wc -l)" -gt 1 ]; then
         echo -e "\e[31mArgo Workflow URL: ${WORKFLOW_URL}\e[0m"
@@ -89,13 +109,15 @@ validate_data_model_workflow_mr_e2e:
         -p argo_main_address="${ARGO_SERVER}" \
         -p target_branch="${CI_MERGE_REQUEST_TARGET_BRANCH_NAME}" \
         -p ci_job_id="${CI_JOB_ID}" \
+        -p e2e_mode_empty="${E2E_MODE_EMPTY}" \
         --labels="project=${CI_PROJECT_NAME},commit=${CI_COMMIT_SHA},author=${GITLAB_USER_LOGIN},ci_job_id=${CI_JOB_ID},place=merge_request" \
         --generate-name="mr-e2e-${CI_PROJECT_NAME}-cicd-${CI_COMMIT_SHORT_SHA}-" \
         --watch --log
-      # Get workflow host address
+      # Get workflow host address (use ARGO_EXTERNAL_ADDRESS for user-facing URL when set)
       WORKFLOW_NAME=$(argo list --selector "commit=${CI_COMMIT_SHA},ci_job_id=${CI_JOB_ID},place=merge_request" -o name | cut -d'/' -f2)
       ARGO_HOST=$(echo $ARGO_SERVER | cut -d':' -f1)
-      WORKFLOW_URL="https://${ARGO_HOST}/workflows/${ARGO_NAMESPACE}/${WORKFLOW_NAME}"
+      ARGO_EXT_HOST="${ARGO_EXTERNAL_ADDRESS:-$ARGO_HOST}"
+      WORKFLOW_URL="https://${ARGO_EXT_HOST}/workflows/${ARGO_NAMESPACE}/${WORKFLOW_NAME}"
       # Check status and print colored URL
       if [ "$(argo list --status Failed --selector "commit=${CI_COMMIT_SHA},ci_job_id=${CI_JOB_ID},place=merge_request" | wc -l)" -gt 1 ]; then
         echo -e "\e[31mArgo Workflow URL: ${WORKFLOW_URL}\e[0m"
@@ -124,10 +146,11 @@ releasing_data_model_workflow_master:
         --labels="project=${CI_PROJECT_NAME},commit=${CI_COMMIT_SHA},author=${GITLAB_USER_LOGIN},ci_job_id=${CI_JOB_ID},place=main" \
         --generate-name="main-${CI_PROJECT_NAME}-cicd-${CI_COMMIT_SHORT_SHA}-" \
         --watch --log
-      # Get workflow host address
+      # Get workflow host address (use ARGO_EXTERNAL_ADDRESS for user-facing URL when set)
       WORKFLOW_NAME=$(argo list --selector "commit=${CI_COMMIT_SHA},ci_job_id=${CI_JOB_ID},place=main" -o name | cut -d'/' -f2)
       ARGO_HOST=$(echo $ARGO_SERVER | cut -d':' -f1)
-      WORKFLOW_URL="https://${ARGO_HOST}/workflows/${ARGO_NAMESPACE}/${WORKFLOW_NAME}"
+      ARGO_EXT_HOST="${ARGO_EXTERNAL_ADDRESS:-$ARGO_HOST}"
+      WORKFLOW_URL="https://${ARGO_EXT_HOST}/workflows/${ARGO_NAMESPACE}/${WORKFLOW_NAME}"
       # Check status and print colored URL
       if [ "$(argo list --status Failed --selector "commit=${CI_COMMIT_SHA},ci_job_id=${CI_JOB_ID},place=main" | wc -l)" -gt 1 ]; then
         echo -e "\e[31mArgo Workflow URL: ${WORKFLOW_URL}\e[0m"

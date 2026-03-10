@@ -33,6 +33,7 @@ spec:
           - name: git_token
           - name: target_branch
           - name: ci_job_id
+          - name: e2e_mode_empty
       outputs: {}
       metadata: {}
       steps:
@@ -74,6 +75,8 @@ spec:
                   value: '{{inputs.parameters.target_branch}}'
                 - name: repo_url
                   value: '{{inputs.parameters.repo_url}}'
+                - name: e2e_mode_empty
+                  value: '{{inputs.parameters.e2e_mode_empty}}'
         - - name: compile-dbt-manifest-e2e
             template: compile-dbt-manifest-e2e
             arguments:
@@ -903,6 +906,7 @@ spec:
           - name: commit_short_sha
           - name: target_branch
           - name: repo_url
+          - name: e2e_mode_empty
       outputs:
         parameters:
           - name: airflow_secret_key
@@ -1137,6 +1141,15 @@ spec:
                     sed -i "$ a\  SECRET_DBT_PACKAGE_REPO_TOKEN: '${SECRET_DBT_PACKAGE_REPO_TOKEN}'" $AIRFLOW_SECRET_FILE_NAME
                   else
                     sed -i "s/SECRET_DBT_PACKAGE_REPO_TOKEN.*/SECRET_DBT_PACKAGE_REPO_TOKEN: '${SECRET_DBT_PACKAGE_REPO_TOKEN}'/" $AIRFLOW_SECRET_FILE_NAME
+                  fi
+
+                  echo "⚙️ [PROCESS] Updating E2E_MODE_EMPTY..."
+                  e2e_empty=$(grep 'E2E_MODE_EMPTY:' $AIRFLOW_SECRET_FILE_NAME | tail -n1 | awk '{print $2}' | tr -d "'" ) || true
+                  if [ -z "$e2e_empty" ]; then
+                    echo "📋 [CONFIG] E2E_MODE_EMPTY: is empty - adding variable"
+                    sed -i "$ a\  E2E_MODE_EMPTY: '{{inputs.parameters.e2e_mode_empty}}'" $AIRFLOW_SECRET_FILE_NAME
+                  else
+                    sed -i "s/E2E_MODE_EMPTY.*/E2E_MODE_EMPTY: '{{inputs.parameters.e2e_mode_empty}}'/" $AIRFLOW_SECRET_FILE_NAME
                   fi
 
                   echo "⚙️ [PROCESS] Updating DAG_SCHEDULE_INTERVAL..."
@@ -5233,6 +5246,8 @@ spec:
       - name: git_token
       - name: target_branch
       - name: ci_job_id
+      - name: e2e_mode_empty
+        value: "True"
   volumes:
     - name: fastbi-argo-workflows-secrets
       secret:
