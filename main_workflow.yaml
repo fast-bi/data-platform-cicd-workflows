@@ -4136,7 +4136,7 @@ spec:
       - name: dbt_workflow_core_image_name
         value: dbt-workflow-core
       - name: dbt_workflow_core_image_tag
-        value: v0.1.2
+        value: v0.1.3
       - name: data_governance_collector_core_image_name
         value: data-governance-collector-core
       - name: data_governance_collector_core_image_tag
