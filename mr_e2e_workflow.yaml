@@ -34,6 +34,7 @@ spec:
           - name: target_branch
           - name: ci_job_id
           - name: e2e_mode_empty
+          - name: e2e_mode_model_sharding
       outputs: {}
       metadata: {}
       steps:
@@ -77,6 +78,8 @@ spec:
                   value: '{{inputs.parameters.repo_url}}'
                 - name: e2e_mode_empty
                   value: '{{inputs.parameters.e2e_mode_empty}}'
+                - name: e2e_mode_model_sharding
+                  value: '{{inputs.parameters.e2e_mode_model_sharding}}'
         - - name: compile-dbt-manifest-e2e
             template: compile-dbt-manifest-e2e
             arguments:
@@ -907,6 +910,7 @@ spec:
           - name: target_branch
           - name: repo_url
           - name: e2e_mode_empty
+          - name: e2e_mode_model_sharding
       outputs:
         parameters:
           - name: airflow_secret_key
@@ -1150,6 +1154,15 @@ spec:
                     sed -i "$ a\  E2E_MODE_EMPTY: '{{inputs.parameters.e2e_mode_empty}}'" $AIRFLOW_SECRET_FILE_NAME
                   else
                     sed -i "s/E2E_MODE_EMPTY.*/E2E_MODE_EMPTY: '{{inputs.parameters.e2e_mode_empty}}'/" $AIRFLOW_SECRET_FILE_NAME
+                  fi
+
+                  echo "⚙️ [PROCESS] Updating E2E_MODE_MODEL_SHARDING..."
+                  e2e_model_sharding=$(grep 'E2E_MODE_MODEL_SHARDING:' $AIRFLOW_SECRET_FILE_NAME | tail -n1 | awk '{print $2}' | tr -d "'" ) || true
+                  if [ -z "$e2e_model_sharding" ]; then
+                    echo "📋 [CONFIG] E2E_MODE_MODEL_SHARDING: is empty - adding variable"
+                    sed -i "$ a\  E2E_MODE_MODEL_SHARDING: '{{inputs.parameters.e2e_mode_model_sharding}}'" $AIRFLOW_SECRET_FILE_NAME
+                  else
+                    sed -i "s/E2E_MODE_MODEL_SHARDING.*/E2E_MODE_MODEL_SHARDING: '{{inputs.parameters.e2e_mode_model_sharding}}'/" $AIRFLOW_SECRET_FILE_NAME
                   fi
 
                   echo "⚙️ [PROCESS] Updating DAG_SCHEDULE_INTERVAL..."
@@ -5246,8 +5259,7 @@ spec:
       - name: git_token
       - name: target_branch
       - name: ci_job_id
-      - name: e2e_mode_empty
-        value: "True"
+
   volumes:
     - name: fastbi-argo-workflows-secrets
       secret:
