@@ -35,6 +35,7 @@ spec:
           - name: ci_job_id
           - name: e2e_mode_empty
           - name: e2e_mode_model_sharding
+          - name: extra_e2e_pool
       outputs: {}
       metadata: {}
       steps:
@@ -80,6 +81,8 @@ spec:
                   value: '{{inputs.parameters.e2e_mode_empty}}'
                 - name: e2e_mode_model_sharding
                   value: '{{inputs.parameters.e2e_mode_model_sharding}}'
+                - name: extra_e2e_pool
+                  value: '{{inputs.parameters.extra_e2e_pool}}'
         - - name: compile-dbt-manifest-e2e
             template: compile-dbt-manifest-e2e
             arguments:
@@ -911,6 +914,7 @@ spec:
           - name: repo_url
           - name: e2e_mode_empty
           - name: e2e_mode_model_sharding
+          - name: extra_e2e_pool
       outputs:
         parameters:
           - name: airflow_secret_key
@@ -1163,6 +1167,15 @@ spec:
                     sed -i "$ a\  E2E_MODE_MODEL_SHARDING: '{{inputs.parameters.e2e_mode_model_sharding}}'" $AIRFLOW_SECRET_FILE_NAME
                   else
                     sed -i "s/E2E_MODE_MODEL_SHARDING.*/E2E_MODE_MODEL_SHARDING: '{{inputs.parameters.e2e_mode_model_sharding}}'/" $AIRFLOW_SECRET_FILE_NAME
+                  fi
+
+                  echo "⚙️ [PROCESS] Updating EXTRA_E2E_POOL..."
+                  extra_e2e_pool=$(grep 'EXTRA_E2E_POOL:' $AIRFLOW_SECRET_FILE_NAME | tail -n1 | awk '{print $2}' | tr -d "'" ) || true
+                  if [ -z "$extra_e2e_pool" ]; then
+                    echo "📋 [CONFIG] EXTRA_E2E_POOL: is empty - adding variable"
+                    sed -i "$ a\  EXTRA_E2E_POOL: '{{inputs.parameters.extra_e2e_pool}}'" $AIRFLOW_SECRET_FILE_NAME
+                  else
+                    sed -i "s/EXTRA_E2E_POOL.*/EXTRA_E2E_POOL: '{{inputs.parameters.extra_e2e_pool}}'/" $AIRFLOW_SECRET_FILE_NAME
                   fi
 
                   echo "⚙️ [PROCESS] Updating DAG_SCHEDULE_INTERVAL..."
