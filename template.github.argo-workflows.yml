@@ -10,6 +10,8 @@
 #   E2E_MODE_EMPTY        – When "True", PR workflow runs dbt with --empty (structure-only). Default: "True".
 #   CICD_WORKFLOWS_TEMPLATE_VERSION – Argo workflow repo tag/branch (e.g. "latest", "v0.1.4.1").
 #   STORAGE_CLASS         – Kubernetes storage class for workflow PVCs.
+#   DBT_MODEL_SHARDING     – When "True", PR workflow runs dbt with model sharding. Default: "True".
+#   DBT_MODEL             – When "True", PR workflow runs dbt with model sharding. Default: "True".
 # =============================================================================
 
 name: Argo Workflow CI - Fast.BI
@@ -36,7 +38,10 @@ env:
   CICD_WORKFLOWS_TEMPLATE_VERSION: "latest"
   STORAGE_CLASS: "standard"
   # E2E empty mode: dbt run uses --empty (structure-only validation) in PR E2E. Set "False" to run with real data.
-  E2E_MODE_EMPTY: "True"
+  E2E_MODE_EMPTY: "False"
+  EXTRA_E2E_POOL: "False"
+  DBT_MODEL_SHARDING: "True"
+  DBT_MODEL: "True"
 
 jobs:
   run_cicd_branch:
@@ -151,7 +156,11 @@ jobs:
             -p argo_main_address="${{ env.ARGO_SERVER }}" \
             -p target_branch="${{ github.event.pull_request.base.ref }}" \
             -p ci_job_id="${{ github.run_id }}" \
-            -p e2e_mode_empty="${{ env.E2E_MODE_EMPTY }}" \
+            -p storage_class="${STORAGE_CLASS}" \
+            -p e2e_mode_empty="${E2E_MODE_EMPTY}" \
+            -p extra_e2e_pool="${EXTRA_E2E_POOL}" \
+            -p dbt_model_sharding="${DBT_MODEL_SHARDING}" \
+            -p dbt_model="${DBT_MODEL}" \
             --labels="project=${{ github.event.repository.name }},commit=${{ github.sha }},author=${{ github.actor }},ci_job_id=${{ github.run_id }},place=pull_request" \
             --generate-name="pr-${{ github.event.repository.name }}-cicd-${{ env.SHORT_SHA }}-" \
             --watch --log

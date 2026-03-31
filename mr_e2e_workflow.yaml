@@ -83,6 +83,10 @@ spec:
                   value: '{{inputs.parameters.e2e_mode_model_sharding}}'
                 - name: extra_e2e_pool
                   value: '{{inputs.parameters.extra_e2e_pool}}'
+                - name: dbt_model_sharding
+                  value: '{{inputs.parameters.dbt_model_sharding}}'
+                - name: dbt_model
+                  value: '{{inputs.parameters.dbt_model}}'
         - - name: compile-dbt-manifest-e2e
             template: compile-dbt-manifest-e2e
             arguments:
@@ -915,6 +919,9 @@ spec:
           - name: e2e_mode_empty
           - name: e2e_mode_model_sharding
           - name: extra_e2e_pool
+          - name: dbt_model_sharding
+          - name: dbt_model
+
       outputs:
         parameters:
           - name: airflow_secret_key
@@ -1167,6 +1174,24 @@ spec:
                     sed -i "$ a\  E2E_MODE_MODEL_SHARDING: '{{inputs.parameters.e2e_mode_model_sharding}}'" $AIRFLOW_SECRET_FILE_NAME
                   else
                     sed -i "s/E2E_MODE_MODEL_SHARDING.*/E2E_MODE_MODEL_SHARDING: '{{inputs.parameters.e2e_mode_model_sharding}}'/" $AIRFLOW_SECRET_FILE_NAME
+                  fi
+
+                  echo "⚙️ [PROCESS] Updating DBT_MODEL_SHARDING..."
+                  dbt_model_sharding=$(grep 'DBT_MODEL_SHARDING:' $AIRFLOW_SECRET_FILE_NAME | tail -n1 | awk '{print $2}' | tr -d "'" ) || true
+                  if [ -z "$dbt_model_sharding" ]; then
+                    echo "📋 [CONFIG] DBT_MODEL_SHARDING: is empty - adding variable"
+                    sed -i "$ a\  DBT_MODEL_SHARDING: '{{inputs.parameters.dbt_model_sharding}}'" $AIRFLOW_SECRET_FILE_NAME
+                  else
+                    sed -i "s/DBT_MODEL_SHARDING.*/DBT_MODEL_SHARDING: '{{inputs.parameters.dbt_model_sharding}}'/" $AIRFLOW_SECRET_FILE_NAME
+                  fi
+
+                  echo "⚙️ [PROCESS] Updating DBT_MODEL..."
+                  dbt_model=$(grep 'DBT_MODEL:' $AIRFLOW_SECRET_FILE_NAME | tail -n1 | awk '{print $2}' | tr -d "'" ) || true
+                  if [ -z "$dbt_model" ]; then
+                    echo "📋 [CONFIG] DBT_MODEL: is empty - adding variable"
+                    sed -i "$ a\  DBT_MODEL: '{{inputs.parameters.dbt_model}}'" $AIRFLOW_SECRET_FILE_NAME
+                  else
+                    sed -i "s/DBT_MODEL.*/DBT_MODEL: '{{inputs.parameters.dbt_model}}'/" $AIRFLOW_SECRET_FILE_NAME
                   fi
 
                   echo "⚙️ [PROCESS] Updating EXTRA_E2E_POOL..."
@@ -5272,6 +5297,16 @@ spec:
       - name: git_token
       - name: target_branch
       - name: ci_job_id
+      - name: e2e_mode_empty
+        value: "False"
+      - name: e2e_mode_model_sharding
+        value: "False"
+      - name: extra_e2e_pool
+        value: "False"
+      - name: dbt_model_sharding
+        value: "True"
+      - name: dbt_model
+        value: "True"
 
   volumes:
     - name: fastbi-argo-workflows-secrets

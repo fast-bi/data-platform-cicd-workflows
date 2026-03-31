@@ -8,6 +8,9 @@
 #   ARGO_EXTERNAL_ADDRESS – Your public domain for the workflow UI (e.g. workflows.data.example.com).
 #                           The generated workflow URL uses this so users can open the link.
 #   E2E_MODE_EMPTY        – When "True", MR E2E runs dbt with --empty (structure-only). Default: "True".
+#   EXTRA_E2E_POOL        – When "True", MR E2E runs dbt with extra e2e pool. Default: "True".
+#   DBT_MODEL_SHARDING     – When "True", MR E2E runs dbt with model sharding. Default: "True".
+#   DBT_MODEL             – When "True", MR E2E runs dbt with model sharding. Default: "True".
 #   CICD_WORKFLOWS_TEMPLATE_VERSION – Argo workflow repo tag/branch (e.g. "latest", "v0.1.4.1").
 #   STORAGE_CLASS         – Kubernetes storage class for workflow PVCs.
 # =============================================================================
@@ -25,7 +28,10 @@ variables:
   CICD_WORKFLOWS_TEMPLATE_VERSION: "latest"
   STORAGE_CLASS: "standard"
   # E2E empty mode: dbt run uses --empty (structure-only validation) in MR E2E. Set "False" to run with real data.
-  E2E_MODE_EMPTY: "True"
+  E2E_MODE_EMPTY: "False"
+  EXTRA_E2E_POOL: "False"
+  DBT_MODEL_SHARDING: "True"
+  DBT_MODEL: "True"
   PS4: ""
 
 default:
@@ -110,6 +116,9 @@ validate_data_model_workflow_mr_e2e:
         -p target_branch="${CI_MERGE_REQUEST_TARGET_BRANCH_NAME}" \
         -p ci_job_id="${CI_JOB_ID}" \
         -p e2e_mode_empty="${E2E_MODE_EMPTY}" \
+        -p extra_e2e_pool="${EXTRA_E2E_POOL}" \
+        -p dbt_model_sharding="${DBT_MODEL_SHARDING}" \
+        -p dbt_model="${DBT_MODEL}" \
         --labels="project=${CI_PROJECT_NAME},commit=${CI_COMMIT_SHA},author=${GITLAB_USER_LOGIN},ci_job_id=${CI_JOB_ID},place=merge_request" \
         --generate-name="mr-e2e-${CI_PROJECT_NAME}-cicd-${CI_COMMIT_SHORT_SHA}-" \
         --watch --log
