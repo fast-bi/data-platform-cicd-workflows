@@ -66,6 +66,14 @@ spec:
               parameters:
                 - name: branch
                   value: '{{inputs.parameters.branch}}'
+        - - name: compile-dbt-manifest-e2e
+            template: compile-dbt-manifest-e2e
+            arguments:
+              parameters:
+                - name: branch
+                  value: '{{inputs.parameters.branch}}'
+                - name: commit_short_sha
+                  value: '{{inputs.parameters.commit_short_sha}}'
         - - name: detect-changed-dbt-tags
             template: detect-changed-dbt-tags
             arguments:
@@ -92,14 +100,6 @@ spec:
                   value: '{{inputs.parameters.dbt_model_sharding}}'
                 - name: dbt_model
                   value: '{{inputs.parameters.dbt_model}}'
-        - - name: compile-dbt-manifest-e2e
-            template: compile-dbt-manifest-e2e
-            arguments:
-              parameters:
-                - name: branch
-                  value: '{{inputs.parameters.branch}}'
-                - name: commit_short_sha
-                  value: '{{inputs.parameters.commit_short_sha}}'
         - - name: compile-dag-e2e
             template: compile-dag-e2e
             arguments:
@@ -484,30 +484,6 @@ spec:
             echo "==========================================="
 
             cd /workdir/src
-
-            echo "==========================================="
-            echo "⚙️ [PROCESS] Generating manifests for changed folders"
-            echo "==========================================="
-
-            AIRFLOW_SECRET_FILE_NAME="${AIRFLOW_SECRET_FILE_NAME:-dbt_airflow_variables.yml}"
-
-            if [ -f /workdir/changed_folders.txt ]; then
-              while IFS= read -r folder; do
-                [ -z "$folder" ] && continue
-                folder_path="/workdir/src/${folder}"
-                if [ -d "$folder_path" ]; then
-                  echo "📋 [INFO] Parsing ${folder}..."
-                  cd "$folder_path"
-                  FOLDER_TARGET=$(grep 'TARGET:' "${AIRFLOW_SECRET_FILE_NAME}" 2>/dev/null | tail -n1 | awk '{print $2}' | tr -d "'")
-                  FOLDER_TARGET="${FOLDER_TARGET:-dev}"
-                  dbt deps --quiet 2>&1 || true
-                  dbt parse --quiet --target "${FOLDER_TARGET}" 2>&1 || true
-                  cd /workdir/src
-                else
-                  echo "⚠️ [WARNING] Folder ${folder} not found, skipping parse."
-                fi
-              done < /workdir/changed_folders.txt
-            fi
 
             python3 << 'PYEOF'
             import json
