@@ -54,6 +54,32 @@ spec:
                   value: '{{inputs.parameters.revision}}'
                 - name: commit_before_sha
                   value: '{{inputs.parameters.commit_before_sha}}'
+        - - name: detect-changed-dbt-tags
+            template: detect-changed-dbt-tags
+            arguments:
+              parameters:
+                - name: commit_short_sha
+                  value: '{{inputs.parameters.commit_short_sha}}'
+              artifacts:
+                - name: repo-artifact
+                  from: '{{steps.checkout.outputs.artifacts.repo-artifact}}'
+                - name: changed-files-artifact
+                  from: '{{steps.detect-changes.outputs.artifacts.changed-files-artifact}}'
+                - name: changed-full-files-artifact
+                  from: '{{steps.detect-changes.outputs.artifacts.changed-full-files-artifact}}'
+          - name: compile-dbt-manifest
+            template: compile-dbt-manifest
+            arguments:
+              parameters:
+                - name: revision
+                  value: '{{inputs.parameters.revision}}'
+                - name: commit_short_sha
+                  value: '{{inputs.parameters.commit_short_sha}}'
+              artifacts:
+                - name: repo-artifact
+                  from: '{{steps.checkout.outputs.artifacts.repo-artifact}}'
+                - name: changed-files-artifact
+                  from: '{{steps.detect-changes.outputs.artifacts.changed-files-artifact}}'
         - - name: data-orchestration-variables-import
             template: data-orchestration-variables-import
             arguments:
@@ -71,20 +97,9 @@ spec:
                   from: '{{steps.detect-changes.outputs.artifacts.changed-files-artifact}}'
                 - name: changed-full-files-artifact
                   from: '{{steps.detect-changes.outputs.artifacts.changed-full-files-artifact}}'
-        - - name: compile-dbt-manifest
-            template: compile-dbt-manifest
-            arguments:
-              parameters:
-                - name: revision
-                  value: '{{inputs.parameters.revision}}'
-                - name: commit_short_sha
-                  value: '{{inputs.parameters.commit_short_sha}}'
-              artifacts:
-                - name: repo-artifact
-                  from: '{{steps.checkout.outputs.artifacts.repo-artifact}}'
-                - name: changed-files-artifact
-                  from: '{{steps.detect-changes.outputs.artifacts.changed-files-artifact}}'
-          - name: compile-dag
+                - name: matched-dags-artifact
+                  from: '{{steps.detect-changed-dbt-tags.outputs.artifacts.matched-dags-artifact}}'
+        - - name: compile-dag
             template: compile-dag
             arguments:
               parameters:
@@ -400,6 +415,8 @@ spec:
             path: /workdir/changed_folders.txt
           - name: changed-full-files-artifact
             path: /workdir/changed_files.txt
+          - name: matched-dags-artifact
+            path: /workdir/matched_dags.txt
       outputs:
         artifacts:
           - name: airflow_secret_key
@@ -427,125 +444,6 @@ spec:
             echo "==========================================="
 
             cd /workdir/src
-
-            # ===========================================
-            # Tag-based change detection
-            # ===========================================
-            echo "⚙️ [PROCESS] Running dbt tag change detection..."
-            python3 -c "
-            import textwrap, sys
-            exec(textwrap.dedent(sys.stdin.read()))
-            " << 'PYEOF'
-            import json, os, sys
-            try:
-                import yaml
-            except ImportError:
-                import subprocess
-                subprocess.check_call([sys.executable, '-m', 'pip', 'install', 'pyyaml', '-q'])
-                import yaml
-
-            changed_files_path = '/workdir/changed_files.txt'
-            matched_dags_path = '/workdir/matched_dags.txt'
-
-            if not os.path.exists(changed_files_path):
-                print("⚠️ [WARNING] changed_files.txt not found, skipping tag detection")
-                open(matched_dags_path, 'w').write('SKIP\n')
-                sys.exit(0)
-
-            with open(changed_files_path) as f:
-                changed_files = [line.strip() for line in f if line.strip()]
-
-            if not changed_files:
-                print("⏭️ [SKIP] No changed files detected")
-                open(matched_dags_path, 'w').write('SKIP\n')
-                sys.exit(0)
-
-            # Group files by dbt project folder (first path component)
-            from collections import defaultdict
-            files_by_folder = defaultdict(list)
-            for cf in changed_files:
-                parts = cf.split('/')
-                if len(parts) > 1:
-                    files_by_folder[parts[0]].append(cf)
-
-            matched_dags = []
-
-            for folder, files in files_by_folder.items():
-                if not os.path.isdir(folder):
-                    continue
-
-                # Load manifest.json
-                manifest_path = os.path.join(folder, 'target', 'manifest.json')
-                if not os.path.exists(manifest_path):
-                    print(f"⚠️ [WARNING] No manifest.json at {manifest_path}, skipping tag detection for folder: {folder}")
-                    continue
-
-                with open(manifest_path) as f:
-                    manifest = json.load(f)
-
-                nodes = manifest.get('nodes', {})
-
-                # Build model name -> tags map from manifest
-                model_tags = {node.get('name', ''): node.get('tags', []) for node in nodes.values()}
-
-                # Collect tags for changed dbt files
-                changed_tags = set()
-                for cf in files:
-                    parts = cf.split('/')
-                    if len(parts) < 3:
-                        continue
-                    subdir = parts[1]  # models, seeds, snapshots, macros, tests
-                    filename = parts[-1]
-
-                    if subdir in ('models', 'seeds', 'snapshots') and filename.endswith('.sql'):
-                        model_name = os.path.splitext(filename)[0]
-                        changed_tags.update(model_tags.get(model_name, []))
-
-                    elif subdir == 'macros' and filename.endswith('.sql'):
-                        macro_name = os.path.splitext(filename)[0]
-                        for node in nodes.values():
-                            raw = node.get('raw_sql', '') or node.get('raw_code', '')
-                            if macro_name in raw:
-                                changed_tags.update(node.get('tags', []))
-
-                    elif subdir == 'tests' and filename.endswith('.sql'):
-                        test_name = os.path.splitext(filename)[0]
-                        for node_id, node in nodes.items():
-                            if node.get('resource_type') == 'test' and test_name in node_id:
-                                for dep in node.get('depends_on', {}).get('nodes', []):
-                                    dep_node = nodes.get(dep, {})
-                                    changed_tags.update(dep_node.get('tags', []))
-
-                print(f"🔍 [CHECK] Folder '{folder}' changed tags: {sorted(changed_tags)}")
-
-                # Match against dynamic_dag_config.yml
-                dag_config_path = os.path.join(folder, 'dynamic_dag_config.yml')
-                if not os.path.exists(dag_config_path):
-                    # No dynamic DAG config - single DAG mode, process folder normally
-                    print(f"📋 [CONFIG] Folder '{folder}' has no dynamic_dag_config.yml - single DAG mode, always included")
-                    continue
-
-                with open(dag_config_path) as f:
-                    dag_config = yaml.safe_load(f) or {}
-
-                dags = dag_config.get('dags', {})
-                for dag_name, dag_settings in dags.items():
-                    dbt_tags = dag_settings.get('DBT_TAGS', [])
-                    matched = [t for t in dbt_tags if t in changed_tags]
-                    if matched:
-                        matched_dags.append(f'{folder}:{dag_name}')
-                        print(f"✅ [MATCH] folder={folder} dag={dag_name} matched_tags={matched}")
-
-            if matched_dags:
-                with open(matched_dags_path, 'w') as f:
-                    f.write('\n'.join(matched_dags) + '\n')
-                print(f"✅ [SUCCESS] Tag detection complete: {len(matched_dags)} DAG(s) matched")
-            else:
-                with open(matched_dags_path, 'w') as f:
-                    f.write('SKIP\n')
-                print("⏭️ [SKIP] No tag-matched DAGs found - downstream steps will be skipped")
-            PYEOF
-            echo "✅ [SUCCESS] Tag change detection completed"
 
             # Create YAML files for the next steps
             echo "⚙️ [PROCESS] Initializing YAML configuration files..."
@@ -1244,6 +1142,396 @@ spec:
                 key: SNOWFLAKE_PASSPHRASE
                 optional: true
           # Fabric secrets
+          - name: FABRIC_SERVER
+            valueFrom:
+              secretKeyRef:
+                name: fastbi-argo-workflows-secrets
+                key: FABRIC_SERVER
+                optional: true
+          - name: FABRIC_DATABASE
+            valueFrom:
+              secretKeyRef:
+                name: fastbi-argo-workflows-secrets
+                key: FABRIC_DATABASE
+                optional: true
+          - name: FABRIC_PORT
+            valueFrom:
+              secretKeyRef:
+                name: fastbi-argo-workflows-secrets
+                key: FABRIC_PORT
+                optional: true
+          - name: FABRIC_USER
+            valueFrom:
+              secretKeyRef:
+                name: fastbi-argo-workflows-secrets
+                key: FABRIC_USER
+                optional: true
+          - name: FABRIC_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: fastbi-argo-workflows-secrets
+                key: FABRIC_PASSWORD
+                optional: true
+          - name: FABRIC_AUTHENTICATION
+            valueFrom:
+              secretKeyRef:
+                name: fastbi-argo-workflows-secrets
+                key: FABRIC_AUTHENTICATION
+                optional: true
+        resources: {}
+        volumeMounts:
+          - name: workdir-temp
+            mountPath: /workdir
+          - name: gcp-sa-secret-file
+            mountPath: /secrets
+    - name: detect-changed-dbt-tags
+      inputs:
+        parameters:
+          - name: commit_short_sha
+        artifacts:
+          - name: repo-artifact
+            path: /workdir/src
+          - name: changed-files-artifact
+            path: /workdir/changed_folders.txt
+          - name: changed-full-files-artifact
+            path: /workdir/changed_files.txt
+      outputs:
+        artifacts:
+          - name: matched-dags-artifact
+            path: /workdir/matched_dags.txt
+      metadata: {}
+      container:
+        name: ''
+        image: '{{workflow.parameters.docker_image_repository_hub}}/{{workflow.parameters.docker_image_repository}}/{{workflow.parameters.dbt_workflow_core_image_name}}:{{workflow.parameters.dbt_workflow_core_image_tag}}'
+        command:
+          - bash
+          - '-c'
+        args:
+          - |
+            #!/bin/bash
+
+            echo "==========================================="
+            echo "🚀 [INFO] DBT Tag-Based Change Detection"
+            echo "📋 [CONFIG] Commit: {{inputs.parameters.commit_short_sha}}"
+            echo "==========================================="
+
+            cd /workdir/src
+
+            # ===========================================
+            # 🔐 CREDENTIALS CONFIGURATION
+            # ===========================================
+            if [[ "${DATA_WAREHOUSE_PLATFORM,,}" == "bigquery" ]]; then
+              if [[ -n "$GCP_SA_SECRET" && -z "$GOOGLE_APPLICATION_CREDENTIALS" ]]; then
+                echo "$GCP_SA_SECRET" | base64 --decode > /secrets/sa.json || { echo "❌ [ERROR] Failed to decode service account secret"; exit 1; }
+                gcloud auth activate-service-account --key-file /secrets/sa.json || { echo "❌ [ERROR] Failed to activate service account"; exit 1; }
+                gcloud config set project $GCP_PROJECT_NAME || { echo "❌ [ERROR] Failed to set GCP project"; exit 1; }
+                export GOOGLE_APPLICATION_CREDENTIALS="/secrets/sa.json"
+              fi
+            fi
+
+            python3 << 'PYEOF'
+            import json
+            import os
+            import re
+            import subprocess
+            import sys
+
+            try:
+                import yaml
+            except ImportError:
+                subprocess.check_call([sys.executable, '-m', 'pip', 'install', 'pyyaml', '-q'])
+                import yaml
+
+            CHANGED_FILES_PATH   = '/workdir/changed_files.txt'
+            CHANGED_FOLDERS_PATH = '/workdir/changed_folders.txt'
+            MATCHED_DAGS_PATH    = '/workdir/matched_dags.txt'
+            SRC_DIR              = '/workdir/src'
+            COMPILE_DBT_LOG      = '/workdir/compile_dbt_project_manifest.log'
+            AIRFLOW_SECRET_FILE_NAME = os.environ.get('AIRFLOW_SECRET_FILE_NAME', 'dbt_airflow_variables.yml')
+            STRUCTURAL_FILES     = {'dynamic_dag_config.yml', 'dbt_project.yml', AIRFLOW_SECRET_FILE_NAME}
+
+            def read_lines(path):
+                if not os.path.exists(path):
+                    return []
+                with open(path) as f:
+                    return [l.strip() for l in f if l.strip()]
+
+            def write_matched(matched):
+                with open(MATCHED_DAGS_PATH, 'w') as f:
+                    if matched:
+                        f.write('\n'.join(matched) + '\n')
+                    else:
+                        f.write('SKIP\n')
+
+            def dbt_target_from_airflow_vars(airflow_vars_path):
+                t = os.environ.get('TARGET', '').strip()
+                if t:
+                    return t
+                if not os.path.exists(airflow_vars_path):
+                    return ''
+                with open(airflow_vars_path) as f:
+                    for line in f:
+                        if 'TARGET:' in line:
+                            rest = line.split('TARGET:', 1)[1].strip()
+                            return rest.strip().strip("'\"")
+                return ''
+
+            def compile_dbt_project_manifest(folder_path, airflow_vars_path):
+                target = dbt_target_from_airflow_vars(airflow_vars_path)
+                print('===========================================')
+                print('⚙️ [PROCESS] Compiling DBT Project Manifest')
+                print('===========================================')
+                parse_cmd = ['dbt', 'parse', '--target', target] if target else ['dbt', 'parse']
+                with open(COMPILE_DBT_LOG, 'a', encoding='utf-8', errors='replace') as logf:
+                    for argv in (['dbt', 'clean', '--quiet'],
+                                 ['dbt', 'deps', '--quiet'],
+                                 parse_cmd):
+                        logf.write('\n--- %s (cwd=%s) ---\n' % (' '.join(argv), folder_path))
+                        logf.flush()
+                        proc = subprocess.run(
+                            argv,
+                            cwd=folder_path,
+                            stdout=subprocess.PIPE,
+                            stderr=subprocess.STDOUT,
+                            text=True,
+                            env=os.environ,
+                            errors='replace',
+                        )
+                        logf.write(proc.stdout or '')
+                        logf.flush()
+                manifest_path = os.path.join(folder_path, 'target', 'manifest.json')
+                if os.path.exists(manifest_path):
+                    print('✅ [SUCCESS] DBT Manifest compiled (%s bytes)' % os.path.getsize(manifest_path))
+                else:
+                    print('❌ [ERROR] manifest.json was NOT generated — dbt parse may have failed silently')
+
+            changed_files   = read_lines(CHANGED_FILES_PATH)
+            changed_folders = [x for x in read_lines(CHANGED_FOLDERS_PATH) if x != 'README.md']
+
+            print(f'Changed folders: {changed_folders}')
+            print(f'Changed files count: {len(changed_files)}')
+
+            if not changed_folders or not changed_files:
+                print('No changed dbt folders or files detected. Writing SKIP.')
+                write_matched([])
+                sys.exit(0)
+
+            matched_dags = []
+
+            for folder in changed_folders:
+                folder_path         = os.path.join(SRC_DIR, folder)
+                manifest_path       = os.path.join(folder_path, 'target', 'manifest.json')
+                dynamic_config_path = os.path.join(folder_path, 'dynamic_dag_config.yml')
+                airflow_vars_path   = os.path.join(folder_path, AIRFLOW_SECRET_FILE_NAME)
+
+                folder_changed_files = [f for f in changed_files if f.startswith(folder + '/')]
+                if not folder_changed_files:
+                    print(f'{folder}: no changed files, skipping.')
+                    continue
+
+                print(f'Processing {folder}: {len(folder_changed_files)} changed files')
+
+                compile_dbt_project_manifest(folder_path, airflow_vars_path)
+
+                # Determine DYNAMIC_DAG flag
+                dynamic_dag = False
+                if os.path.exists(airflow_vars_path):
+                    with open(airflow_vars_path) as f:
+                        airflow_vars = yaml.safe_load(f) or {}
+                    root_key = next(iter(airflow_vars), None)
+                    if root_key:
+                        dynamic_dag = str(airflow_vars[root_key].get('DYNAMIC_DAG', 'False')).lower() == 'true'
+
+                if not dynamic_dag:
+                    print(f'{folder}: DYNAMIC_DAG=False - single DAG project, always include.')
+                    matched_dags.append(f'{folder}:__single__')
+                    continue
+
+                if not os.path.exists(dynamic_config_path):
+                    print(f'WARNING: {folder}: DYNAMIC_DAG=True but dynamic_dag_config.yml not found. Skipping.')
+                    continue
+
+                with open(dynamic_config_path) as f:
+                    dynamic_config = yaml.safe_load(f) or {}
+                all_dag_names = list((dynamic_config.get('dags') or {}).keys())
+
+                # Structural file change -> full run for this project
+                changed_rel = {os.path.relpath(cf, folder) for cf in folder_changed_files}
+                if any(b in STRUCTURAL_FILES for b in changed_rel):
+                    print(f'{folder}: structural file changed - including all {len(all_dag_names)} DAGs.')
+                    for dag_name in all_dag_names:
+                        matched_dags.append(f'{folder}:{dag_name}')
+                    continue
+
+                if not os.path.exists(manifest_path):
+                    print(f'WARNING: {folder}: manifest.json not found - falling back to full run.')
+                    for dag_name in all_dag_names:
+                        matched_dags.append(f'{folder}:{dag_name}')
+                    continue
+
+                print(f'{folder}: loading manifest...')
+                with open(manifest_path) as f:
+                    manifest = json.load(f)
+
+                nodes  = manifest.get('nodes', {})
+                macros = manifest.get('macros', {})
+
+                file_to_tags          = {}
+                node_id_to_tags       = {}
+                macro_to_dep_nodes    = {}
+                macro_file_to_id      = {}
+                test_file_to_node_ids = {}
+
+                for node_id, node in nodes.items():
+                    rel_path = node.get('original_file_path', '')
+                    tags     = node.get('tags', [])
+                    rtype    = node.get('resource_type', '')
+                    node_id_to_tags[node_id] = tags
+
+                    if rtype in ('model', 'seed', 'snapshot'):
+                        file_to_tags[rel_path] = tags
+                    elif rtype == 'test':
+                        dep_nodes = node.get('depends_on', {}).get('nodes', [])
+                        test_file_to_node_ids.setdefault(rel_path, []).extend(dep_nodes)
+
+                    for macro_id in node.get('depends_on', {}).get('macros', []):
+                        macro_to_dep_nodes.setdefault(macro_id, []).append(node_id)
+
+                for macro_id, macro in macros.items():
+                    rel_path = macro.get('original_file_path', '')
+                    if rel_path:
+                        macro_file_to_id[rel_path] = macro_id
+
+                collected_tags = set()
+                for full_path in folder_changed_files:
+                    rel_path = os.path.relpath(full_path, folder)
+                    if rel_path in file_to_tags:
+                        collected_tags.update(file_to_tags[rel_path])
+                    elif rel_path in macro_file_to_id:
+                        macro_id = macro_file_to_id[rel_path]
+                        for dep_node_id in macro_to_dep_nodes.get(macro_id, []):
+                            collected_tags.update(node_id_to_tags.get(dep_node_id, []))
+                    elif rel_path in test_file_to_node_ids:
+                        for dep_node_id in test_file_to_node_ids[rel_path]:
+                            collected_tags.update(node_id_to_tags.get(dep_node_id, []))
+                    else:
+                        print(f'  {rel_path}: not in manifest index, skipping')
+
+                print(f'{folder}: collected tags -> {sorted(collected_tags)}')
+
+                if not collected_tags:
+                    print(f'{folder}: no tags resolved - skipping all DAGs for this project.')
+                    continue
+
+                for dag_name, dag_config in (dynamic_config.get('dags') or {}).items():
+                    dag_tags     = set(dag_config.get('DBT_TAGS') or [])
+                    intersection = dag_tags & collected_tags
+                    if intersection:
+                        print(f'  MATCH: {folder}:{dag_name} (matched tags: {sorted(intersection)})')
+                        matched_dags.append(f'{folder}:{dag_name}')
+                    else:
+                        print(f'  SKIP:  {folder}:{dag_name} (no overlap with {sorted(dag_tags)})')
+
+            if matched_dags:
+                print(f'\nTotal matched DAGs: {len(matched_dags)}')
+                for m in matched_dags:
+                    print(f'  -> {m}')
+                write_matched(matched_dags)
+            else:
+                print('\nNo DAGs matched any changed tags. Writing SKIP.')
+                write_matched([])
+            PYEOF
+
+            echo "==========================================="
+            echo "📋 [CONFIG] matched_dags.txt contents:"
+            cat /workdir/matched_dags.txt
+            echo "==========================================="
+            echo "✅ [SUCCESS] Tag-based change detection completed"
+        env:
+          - name: DATA_WAREHOUSE_PLATFORM
+            valueFrom:
+              secretKeyRef:
+                name: fastbi-argo-workflows-secrets
+                key: DATA_WAREHOUSE_PLATFORM
+          - name: AIRFLOW_SECRET_FILE_NAME
+            valueFrom:
+              secretKeyRef:
+                name: fastbi-argo-workflows-secrets
+                key: AIRFLOW_SECRET_FILE_NAME
+          - name: PRIVATE_ACCESS_NAME
+            valueFrom:
+              secretKeyRef:
+                name: fastbi-argo-workflows-secrets
+                key: PRIVATE_ACCESS_NAME
+          - name: PRIVATE_ACCESS_TOKEN
+            valueFrom:
+              secretKeyRef:
+                name: fastbi-argo-workflows-secrets
+                key: PRIVATE_ACCESS_TOKEN
+          - name: SECRET_PACKAGE_REPO_TOKEN_NAME
+            valueFrom:
+              secretKeyRef:
+                name: fastbi-argo-workflows-secrets
+                key: SECRET_PACKAGE_REPO_TOKEN_NAME
+          - name: SECRET_DBT_PACKAGE_REPO_TOKEN
+            valueFrom:
+              secretKeyRef:
+                name: fastbi-argo-workflows-secrets
+                key: SECRET_DBT_PACKAGE_REPO_TOKEN
+          - name: GCP_PROJECT_NAME
+            valueFrom:
+              secretKeyRef:
+                name: fastbi-argo-workflows-secrets
+                key: GCP_PROJECT_NAME
+                optional: true
+          - name: GCP_SA_SECRET
+            valueFrom:
+              secretKeyRef:
+                name: fastbi-argo-workflows-secrets
+                key: GCP_SA_SECRET
+                optional: true
+          - name: REDSHIFT_HOST
+            valueFrom:
+              secretKeyRef:
+                name: fastbi-argo-workflows-secrets
+                key: REDSHIFT_HOST
+                optional: true
+          - name: REDSHIFT_DATABASE
+            valueFrom:
+              secretKeyRef:
+                name: fastbi-argo-workflows-secrets
+                key: REDSHIFT_DATABASE
+                optional: true
+          - name: REDSHIFT_PORT
+            valueFrom:
+              secretKeyRef:
+                name: fastbi-argo-workflows-secrets
+                key: REDSHIFT_PORT
+                optional: true
+          - name: REDSHIFT_USER
+            valueFrom:
+              secretKeyRef:
+                name: fastbi-argo-workflows-secrets
+                key: REDSHIFT_USER
+                optional: true
+          - name: REDSHIFT_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: fastbi-argo-workflows-secrets
+                key: REDSHIFT_PASSWORD
+                optional: true
+          - name: SNOWFLAKE_PRIVATE_KEY
+            valueFrom:
+              secretKeyRef:
+                name: fastbi-argo-workflows-secrets
+                key: SNOWFLAKE_PRIVATE_KEY
+                optional: true
+          - name: SNOWFLAKE_PASSPHRASE
+            valueFrom:
+              secretKeyRef:
+                name: fastbi-argo-workflows-secrets
+                key: SNOWFLAKE_PASSPHRASE
+                optional: true
           - name: FABRIC_SERVER
             valueFrom:
               secretKeyRef:
