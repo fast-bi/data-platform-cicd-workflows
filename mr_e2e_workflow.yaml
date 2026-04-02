@@ -470,7 +470,7 @@ spec:
       metadata: {}
       container:
         name: ''
-        image: '{{workflow.parameters.docker_image_repository_hub}}/{{workflow.parameters.docker_image_repository}}/{{workflow.parameters.data_orchestrator_core_image_name}}:{{workflow.parameters.data_orchestrator_core_image_tag}}'
+        image: '{{workflow.parameters.docker_image_repository_hub}}/{{workflow.parameters.docker_image_repository}}/{{workflow.parameters.dbt_workflow_core_image_name}}:{{workflow.parameters.dbt_workflow_core_image_tag}}'
         command:
           - bash
           - '-c'
@@ -484,6 +484,24 @@ spec:
             echo "==========================================="
 
             cd /workdir/src
+
+            echo "==========================================="
+            echo "⚙️ [PROCESS] Compiling DBT Project Manifest"
+            echo "==========================================="
+            
+            dbt clean --quiet 2>&1
+            dbt deps --quiet 2>&1 | tee -a /workdir/compile_dbt_project_manifest.log || true
+            dbt parse --target $TARGET 2>&1 | tee -a /workdir/compile_dbt_project_manifest.log || true
+
+            if [ -f "./target/manifest.json" ]; then
+              echo "✅ [SUCCESS] DBT Manifest compiled ($(du -sh ./target/manifest.json | cut -f1))"
+            else
+              echo "❌ [ERROR] manifest.json was NOT generated — dbt parse may have failed silently"
+            fi
+            
+            echo "==========================================="
+            echo "⚙️ [PROCESS] Setting up E2E test sample table source data"
+            echo "==========================================="
 
             python3 << 'PYEOF'
             import json
