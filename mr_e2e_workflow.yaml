@@ -489,23 +489,14 @@ spec:
               echo "⚠️ [WARNING] Branch name contains symbols. Changing branch name to: ${new_branch_name}"
               branch_name="${new_branch_name}"
             fi
-
-            echo "⚙️ [PROCESS] Updating GIT_BRANCH..."
-            git_branch=$(grep 'GIT_BRANCH:' $AIRFLOW_SECRET_FILE_NAME | tail -n1 | awk '{print $2}' | tr -d "'" ) || true
-            if [ -z "$git_branch" ]; then
-              echo "📋 [CONFIG] GIT_BRANCH: is empty - adding variable"
-              sed -i "$ a\  GIT_BRANCH: '${branch_name}'" $AIRFLOW_SECRET_FILE_NAME
-            else
-              sed -i "s/GIT_BRANCH.*/GIT_BRANCH: '${branch_name}'/" $AIRFLOW_SECRET_FILE_NAME
-            fi
-
-            export GIT_BRANCH=$(grep 'GIT_BRANCH:' $AIRFLOW_SECRET_FILE_NAME | tail -n1 | awk '{print $2}' | tr -d "'" )
+            export BRANCH_NAME="${branch_name}"
 
             cd /workdir/src
 
             python3 << 'PYEOF'
             import json
             import os
+            import re
             import subprocess
             import sys
 
@@ -522,6 +513,7 @@ spec:
             COMPILE_DBT_LOG     = '/workdir/compile_dbt_project_manifest.log'
             AIRFLOW_SECRET_FILE_NAME = os.environ.get('AIRFLOW_SECRET_FILE_NAME', 'dbt_airflow_variables.yml')
             STRUCTURAL_FILES    = {'dynamic_dag_config.yml', 'dbt_project.yml', AIRFLOW_SECRET_FILE_NAME}
+            BRANCH_NAME = os.environ.get('BRANCH_NAME', '').strip()
 
             def read_lines(path):
                 if not os.path.exists(path):
@@ -549,6 +541,37 @@ spec:
                             rest = line.split('TARGET:', 1)[1].strip()
                             last = rest.strip().strip("'\"")
                 return last or ''
+
+            def update_git_branch_in_airflow_vars(airflow_vars_path, branch_name):
+                """Mirror shell sed/git grep: set GIT_BRANCH in project airflow vars before dbt parse."""
+                print('⚙️ [PROCESS] Updating GIT_BRANCH...')
+                if not branch_name:
+                    print('⚠️ [WARNING] BRANCH_NAME empty - skipping GIT_BRANCH update')
+                    return
+                if not os.path.exists(airflow_vars_path):
+                    print('⚠️ [WARNING] %s not found - skipping GIT_BRANCH update' % airflow_vars_path)
+                    return
+                with open(airflow_vars_path, 'r', encoding='utf-8', errors='replace') as f:
+                    lines = f.readlines()
+                quoted = "'%s'" % branch_name.replace("'", "''")
+                has_git_branch = any('GIT_BRANCH:' in l for l in lines)
+                if not has_git_branch:
+                    print('📋 [CONFIG] GIT_BRANCH: is empty - adding variable')
+                    content = ''.join(lines)
+                    if content and not content.endswith('\n'):
+                        content += '\n'
+                    content += '  GIT_BRANCH: %s\n' % quoted
+                else:
+                    out = []
+                    for line in lines:
+                        if 'GIT_BRANCH:' in line:
+                            out.append(re.sub(r'GIT_BRANCH.*', 'GIT_BRANCH: %s' % quoted, line.rstrip('\n')) + '\n')
+                        else:
+                            out.append(line)
+                    content = ''.join(out)
+                with open(airflow_vars_path, 'w', encoding='utf-8') as f:
+                    f.write(content)
+                os.environ['GIT_BRANCH'] = branch_name
 
             def compile_dbt_project_manifest(folder_path, airflow_vars_path):
                 """dbt clean, deps, parse in folder_path; append output to COMPILE_DBT_LOG (same as shell tee -a)."""
@@ -607,6 +630,7 @@ spec:
 
                 print(f'Processing {folder}: {len(folder_changed_files)} changed files')
 
+                update_git_branch_in_airflow_vars(airflow_vars_path, BRANCH_NAME)
                 compile_dbt_project_manifest(folder_path, airflow_vars_path)
 
                 # Determine DYNAMIC_DAG flag
