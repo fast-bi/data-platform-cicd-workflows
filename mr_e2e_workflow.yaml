@@ -4101,7 +4101,7 @@ spec:
                   MATCHED_DAG_NAMES=$(grep "^${folder}:" /workdir/matched_dags.txt | cut -d: -f2)
                   ALL_TAGS=""
                   for dag_name in $MATCHED_DAG_NAMES; do
-                    DAG_TAGS=$(yq -r ".dags.${dag_name}.dbt_tags // [] | .[]" dynamic_dag_config.yml 2>/dev/null | tr '\n' ',')
+                    DAG_TAGS=$(yq -r ".dags.${dag_name}.DBT_TAGS // [] | .[]" dynamic_dag_config.yml 2>/dev/null | tr '\n' ',')
                     ALL_TAGS="${ALL_TAGS}${DAG_TAGS}"
                   done
                   E2E_MATCHED_TAGS=$(echo "$ALL_TAGS" | sed 's/,$//' | tr ',' '\n' | sort -u | tr '\n' ',' | sed 's/,$//')
@@ -4467,7 +4467,7 @@ spec:
                   MATCHED_DAG_NAMES=$(grep "^${folder}:" /workdir/matched_dags.txt | cut -d: -f2)
                   ALL_TAGS=""
                   for dag_name in $MATCHED_DAG_NAMES; do
-                    DAG_TAGS=$(yq -r ".dags.${dag_name}.dbt_tags // [] | .[]" dynamic_dag_config.yml 2>/dev/null | tr '\n' ' ')
+                    DAG_TAGS=$(yq -r ".dags.${dag_name}.DBT_TAGS // [] | .[]" dynamic_dag_config.yml 2>/dev/null | tr '\n' ' ')
                     ALL_TAGS="${ALL_TAGS} ${DAG_TAGS}"
                   done
                   TAGS_JSON=$(echo "$ALL_TAGS" | xargs -n1 | sort -u | jq -R . | jq -sc .)
