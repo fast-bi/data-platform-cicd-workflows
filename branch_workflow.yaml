@@ -63,20 +63,14 @@ spec:
                   value: '{{inputs.parameters.branch}}'
             continueOn:
               failed: true
-        - - name: check-documentation-completion
-            template: check-documentation-completion
+        - - name: check-dbt-quality
+            template: check-dbt-quality
             arguments:
               parameters:
                 - name: branch
                   value: '{{inputs.parameters.branch}}'
-            continueOn:
-              failed: true
-        - - name: check-tests-completion
-            template: check-tests-completion
-            arguments:
-              parameters:
-                - name: branch
-                  value: '{{inputs.parameters.branch}}'
+                - name: commit_short_sha
+                  value: '{{inputs.parameters.commit_short_sha}}'
             continueOn:
               failed: true
         - - name: validating-da-dependencies
@@ -213,10 +207,14 @@ spec:
 
             cd /workdir/src || { echo "❌ [ERROR] Failed to change to /workdir/src directory"; exit 1; }
 
-            echo "🔍 [CHECK] Detecting changed folders from revision: {{inputs.parameters.revision}}"
+            echo "🔍 [CHECK] Detecting changed files from revision: {{inputs.parameters.revision}}"
 
             git diff-tree --no-commit-id --name-only -r {{inputs.parameters.revision}} \
-              | cut -d'/' -f1 \
+              > /workdir/changed_files.txt || { echo "❌ [ERROR] Failed to capture changed file paths"; exit 1; }
+
+            echo "🔍 [CHECK] Detecting changed folders from revision: {{inputs.parameters.revision}}"
+
+            cut -d'/' -f1 /workdir/changed_files.txt \
               | sort \
               | uniq > /workdir/changed_folders.txt || { echo "❌ [ERROR] Failed to identify changed folders"; exit 1; }
 
@@ -548,10 +546,11 @@ spec:
             mountPath: /workdir
           - name: gcp-sa-secret-file
             mountPath: /secrets
-    - name: check-documentation-completion
+    - name: check-dbt-quality
       inputs:
         parameters:
           - name: branch
+          - name: commit_short_sha
       outputs: {}
       metadata: {}
       container:
@@ -566,362 +565,27 @@ spec:
 
 
             echo "==========================================="
-            echo "🚀 [INFO] DBT Project Documentation Review"
+            echo "🚀 [INFO] DBT Project Quality Check"
+            echo "📋 [CONFIG] Branch: {{inputs.parameters.branch}}"
+            echo "📋 [CONFIG] Commit: {{inputs.parameters.commit_short_sha}}"
+            echo "📋 [CONFIG] Checks: dbt-checkpoint (presence) + dbt-project-evaluator (structure)"
             echo "==========================================="
-            echo "📋 [CONFIG] Starting documentation review procedure on Branch: {{inputs.parameters.branch}}"
+
             export GIT_BRANCH={{inputs.parameters.branch}}
+            QUALITY_FAILED=0
 
             cd /workdir/src
 
-            echo "==========================================="
-            echo "🔍 [CHECK] Processing DBT Projects"
-            echo "==========================================="
-
             while read folder; do
               if [ -d "$folder" ]; then
-                echo "⚙️ [PROCESS] Running documentation check in $folder"
-                cd "$folder"
-                
                 echo "==========================================="
+                echo "⚙️ [PROCESS] Running quality checks in: $folder"
+                echo "==========================================="
+
+                cd "$folder"
+
                 echo "🔐 [CONFIG] Setting up Data Warehouse Credentials"
-                echo "==========================================="
-                
-                #Set warehouse credentials
-                if [[ "${DATA_WAREHOUSE_PLATFORM,,}" == "bigquery" ]]; then
-                  if [[ -z "$GCP_SA_SECRET" ]]; then
-                    echo "❌ [ERROR] Google Bigquery credentials are missing: Service Account JSON not provided"
-                    exit 1
-                  else
-                    if [[ -z "$GOOGLE_APPLICATION_CREDENTIALS" ]]; then
-                      echo "🔐 [CONFIG] Setting up Google Cloud authentication"
-                      echo "$GCP_SA_SECRET" | base64 --decode > /secrets/sa.json
-                      gcloud auth activate-service-account --key-file /secrets/sa.json
-                      gcloud config set project $GCP_PROJECT_NAME
-                      export GOOGLE_APPLICATION_CREDENTIALS="/secrets/sa.json"
-                      echo "✅ [SUCCESS] Google Cloud authentication configured"
-                    fi
-                  fi
-                fi
-                
-                if [[ "${DATA_WAREHOUSE_PLATFORM,,}" == "snowflake" ]]; then
-                  if [[ -z "$SNOWFLAKE_PRIVATE_KEY" || -z "$SNOWFLAKE_PASSPHRASE" ]]; then
-                    echo "❌ [ERROR] Snowflake credentials are missing: Private Key and Passphrase not provided"
-                    exit 1
-                  else
-                    if [[ -z "$SNOWSQL_PRIVATE_KEY_PASSPHRASE" ]]; then
-                      echo "🔐 [CONFIG] Setting up Snowflake authentication"
-                      mkdir -p /snowsql/secrets/
-                      echo "$SNOWFLAKE_PRIVATE_KEY" > /snowsql/secrets/rsa_key.p8
-                      chmod 600 /snowsql/secrets/rsa_key.p8
-                      export SNOWSQL_PRIVATE_KEY_PASSPHRASE=$SNOWFLAKE_PASSPHRASE
-                      echo "✅ [SUCCESS] Snowflake authentication configured"
-                    fi
-                  fi
-                fi
-                
-                if [[ "${DATA_WAREHOUSE_PLATFORM,,}" == "redshift" ]]; then
-                  if [[ -z "$REDSHIFT_PASSWORD" || -z "$REDSHIFT_USER" || -z "$REDSHIFT_HOST" || -z "$REDSHIFT_DATABASE" || -z "$REDSHIFT_PORT" ]]; then
-                    echo "❌ [ERROR] Redshift credentials are missing: username and/or password not provided"
-                    exit 1
-                  else
-                    echo "✅ [SUCCESS] Redshift credentials validated"
-                  fi
-                fi
-                
-                if [[ "${DATA_WAREHOUSE_PLATFORM,,}" == "fabric" ]]; then
-                  if [[ -z "$FABRIC_SERVER" || -z "$FABRIC_DATABASE" || -z "$FABRIC_PORT" || -z "$FABRIC_USER" || -z "$FABRIC_PASSWORD" || -z "$FABRIC_AUTHENTICATION" ]]; then
-                    echo "❌ [ERROR] Fabric credentials are missing: one or more required parameters not provided"
-                    exit 1
-                  else
-                    echo "✅ [SUCCESS] Fabric credentials validated"
-                  fi
-                fi
 
-                echo "==========================================="
-                echo "📋 [CONFIG] Setting Documentation Coverage Threshold"
-                echo "==========================================="
-                
-                export DOC_COVERAGE_THRESHOLD=$(grep 'DOC_COVERAGE_THRESHOLD:' "$AIRFLOW_SECRET_FILE_NAME" | tail -n1 | awk '{print $2}' | tr -d "'")
-                if [ -z "$DOC_COVERAGE_THRESHOLD" ]; then
-                  export DOC_COVERAGE_THRESHOLD='0.9'
-                  echo "📋 [CONFIG] Using default documentation coverage threshold: 90%"
-                else
-                  echo "📋 [CONFIG] Documentation coverage threshold configured: ${DOC_COVERAGE_THRESHOLD}%"
-                fi
-
-                echo "==========================================="
-                echo "🧹 [PROCESS] Cleaning DBT Project Dependencies"
-                echo "==========================================="
-                
-                #Remove Package re_data:
-                remove_re_data_package() {
-                    local packages_file="${1:-packages.yml}"
-                    
-                    # Check if file exists
-                    if [[ ! -f "$packages_file" ]]; then
-                        echo "❌ [ERROR] File '$packages_file' not found" >&2
-                        return 1
-                    fi
-                    
-                    # Check if re-data/re_data exists in the file
-                    if grep -q "package: re-data/re_data" "$packages_file"; then
-                        echo "⚙️ [PROCESS] Found re-data/re_data package, removing it..."
-                        
-                        # Create a temporary file
-                        local temp_file=$(mktemp)
-                        
-                        # Use yq to remove the package entry
-                        yq 'del(.packages[] | select(.package == "re-data/re_data"))' "$packages_file" > "$temp_file"
-                        
-                        # Check if yq command succeeded
-                        if [[ $? -ne 0 ]]; then
-                            echo "❌ [ERROR] Failed to process YAML with yq" >&2
-                            rm -f "$temp_file"
-                            return 1
-                        fi
-                        
-                        # Replace original file with the modified version
-                        mv "$temp_file" "$packages_file"
-                        
-                        echo "✅ [SUCCESS] Successfully removed re-data/re_data package from $packages_file"
-
-                        # Force recompilation by removing manifest
-                        dbt clean --quiet 2>&1
-
-                        return 0
-                    else
-                        echo "📋 [CONFIG] Package re-data/re_data not found in $packages_file"
-                        return 0
-                    fi
-                }
-
-                # Remove macro for Table Sample set_data_tablesample.sql
-                remove_set_data_tablesample_macro() {
-                    root_macro_folder="./macros"
-                    local macro_file="set_data_tablesample.sql"
-                    if [ -f "$root_macro_folder/$macro_file" ]; then
-                        echo "⚙️ [PROCESS] Found set_data_tablesample.sql macro, removing it..."
-                        rm -f "$root_macro_folder/$macro_file"
-                        echo "✅ [SUCCESS] Successfully removed set_data_tablesample.sql macro"
-                    else
-                        echo "📋 [CONFIG] set_data_tablesample.sql macro not found in $root_macro_folder"
-                        return 0
-                    fi
-                }
-
-                remove_set_data_tablesample_macro
-
-                remove_re_data_package
-
-                echo "==========================================="
-                echo "⚙️ [PROCESS] Building DBT Project"
-                echo "==========================================="
-                
-                echo "⚙️ [PROCESS] Installing DBT dependencies"
-                dbt deps --quiet 2>&1
-                
-                echo "⚙️ [PROCESS] Building DBT models"
-                dbt build --target ${TARGET} --empty --quiet 2>&1
-                
-                echo "⚙️ [PROCESS] Generating DBT documentation"
-                dbt docs generate --target ${TARGET} --quiet 2>&1
-
-                echo "==========================================="
-                echo "🔍 [CHECK] Running Documentation Validation"
-                echo "==========================================="
-                
-                # Run the documentation check and display output in real-time
-                python /usr/app/dbt/dbt_lint/check_dbt_documentation.py 2>&1 | tee /dev/tty
-                doc_check_exit_code=${PIPESTATUS[0]}
-
-                echo "==========================================="
-                echo "📋 [PROCESS] Processing Documentation Results"
-                echo "==========================================="
-                
-                # Copy the log file to the parent directory for error checking
-                if [ -f "dbt_documentation.log" ]; then
-                  echo "📋 [CONFIG] Copying documentation log file"
-                  cp dbt_documentation.log ../dbt_documentation_lint.log
-                fi
-
-                cd ..
-
-                echo "==========================================="
-                echo "🔍 [CHECK] Validating Documentation Results"
-                echo "==========================================="
-                
-                # Check for errors in the log file
-                if [ -f "dbt_documentation_lint.log" ]; then
-                  if grep -q "^ERROR:" dbt_documentation_lint.log || [ $doc_check_exit_code -ne 0 ]; then
-                    echo "❌ [ERROR] Documentation check failed. Check the logs for details."
-                    exit 1
-                  else
-                    echo "✅ [SUCCESS] Documentation check completed successfully"
-                  fi
-                else
-                  echo "❌ [ERROR] Documentation check log file not found"
-                  exit 1
-                fi
-              else
-                echo "📋 [CONFIG] Working on root - skipping documentation check"
-                touch ../dbt_documentation_lint.log
-                echo "INFO: Working on root - skip" >> ../dbt_documentation_lint.log
-              fi
-            done < /workdir/changed_folders.txt
-
-            echo "==========================================="
-            echo "✅ [SUCCESS] DBT Project Documentation Review Complete"
-            echo "==========================================="
-            echo "🚀 [INFO] End of DBT Project documentation review procedure."
-        env:
-          - name: TARGET
-            value: test
-          - name: AIRFLOW_SECRET_FILE_NAME
-            valueFrom:
-              secretKeyRef:
-                name: fastbi-argo-workflows-secrets
-                key: AIRFLOW_SECRET_FILE_NAME
-          - name: DATA_WAREHOUSE_PLATFORM
-            valueFrom:
-              secretKeyRef:
-                name: fastbi-argo-workflows-secrets
-                key: DATA_WAREHOUSE_PLATFORM
-          - name: GCP_PROJECT_NAME
-            valueFrom:
-              secretKeyRef:
-                name: fastbi-argo-workflows-secrets
-                key: GCP_PROJECT_NAME
-          - name: GCP_SA_SECRET
-            valueFrom:
-              secretKeyRef:
-                name: fastbi-argo-workflows-secrets
-                key: GCP_SA_SECRET
-          # Redshift secrets
-          - name: REDSHIFT_HOST
-            valueFrom:
-              secretKeyRef:
-                name: fastbi-argo-workflows-secrets
-                key: REDSHIFT_HOST
-                optional: true
-          - name: REDSHIFT_DATABASE
-            valueFrom:
-              secretKeyRef:
-                name: fastbi-argo-workflows-secrets
-                key: REDSHIFT_DATABASE
-                optional: true
-          - name: REDSHIFT_PORT
-            valueFrom:
-              secretKeyRef:
-                name: fastbi-argo-workflows-secrets
-                key: REDSHIFT_PORT
-                optional: true
-          - name: REDSHIFT_USER
-            valueFrom:
-              secretKeyRef:
-                name: fastbi-argo-workflows-secrets
-                key: REDSHIFT_USER
-                optional: true
-          - name: REDSHIFT_PASSWORD
-            valueFrom:
-              secretKeyRef:
-                name: fastbi-argo-workflows-secrets
-                key: REDSHIFT_PASSWORD
-                optional: true
-          # Snowflake secrets
-          - name: SNOWFLAKE_PRIVATE_KEY
-            valueFrom:
-              secretKeyRef:
-                name: fastbi-argo-workflows-secrets
-                key: SNOWFLAKE_PRIVATE_KEY
-                optional: true
-          - name: SNOWFLAKE_PASSPHRASE
-            valueFrom:
-              secretKeyRef:
-                name: fastbi-argo-workflows-secrets
-                key: SNOWFLAKE_PASSPHRASE
-                optional: true
-          # Fabric secrets
-          - name: FABRIC_SERVER
-            valueFrom:
-              secretKeyRef:
-                name: fastbi-argo-workflows-secrets
-                key: FABRIC_SERVER
-                optional: true
-          - name: FABRIC_DATABASE
-            valueFrom:
-              secretKeyRef:
-                name: fastbi-argo-workflows-secrets
-                key: FABRIC_DATABASE
-                optional: true
-          - name: FABRIC_PORT
-            valueFrom:
-              secretKeyRef:
-                name: fastbi-argo-workflows-secrets
-                key: FABRIC_PORT
-                optional: true
-          - name: FABRIC_USER
-            valueFrom:
-              secretKeyRef:
-                name: fastbi-argo-workflows-secrets
-                key: FABRIC_USER
-                optional: true
-          - name: FABRIC_PASSWORD
-            valueFrom:
-              secretKeyRef:
-                name: fastbi-argo-workflows-secrets
-                key: FABRIC_PASSWORD
-                optional: true
-          - name: FABRIC_AUTHENTICATION
-            valueFrom:
-              secretKeyRef:
-                name: fastbi-argo-workflows-secrets
-                key: FABRIC_AUTHENTICATION
-                optional: true
-        resources: {}
-        volumeMounts:
-          - name: workdir
-            mountPath: /workdir
-          - name: gcp-sa-secret-file
-            mountPath: /secrets
-    - name: check-tests-completion
-      inputs:
-        parameters:
-          - name: branch
-      outputs: {}
-      metadata: {}
-      container:
-        name: ''
-        image: '{{workflow.parameters.docker_image_repository_hub}}/{{workflow.parameters.docker_image_repository}}/{{workflow.parameters.dbt_workflow_core_image_name}}:{{workflow.parameters.dbt_workflow_core_image_tag}}'
-        command:
-          - bash
-          - '-c'
-        args:
-          - |
-            #!/bin/bash
-
-
-            echo "==========================================="
-            echo "🚀 [INFO] DBT Project Tests Completion Check"
-            echo "==========================================="
-
-            echo "⚙️ [PROCESS] Starting DBT Project tests completion procedure on Branch: {{inputs.parameters.branch}}"
-            export GIT_BRANCH={{inputs.parameters.branch}}
-
-            cd /workdir/src
-
-            echo "🔍 [CHECK] Processing changed folders for testing..."
-
-            while read folder; do
-              if [ -d "$folder" ]; then
-                echo "==========================================="
-                echo "⚙️ [PROCESS] Running tests in folder: $folder"
-                echo "==========================================="
-                
-                cd "$folder"
-                
-                echo "📋 [CONFIG] Setting up warehouse credentials..."
-                
-                # BigQuery Configuration
                 if [[ "${DATA_WAREHOUSE_PLATFORM,,}" == "bigquery" ]]; then
                   if [[ -z "$GCP_SA_SECRET" ]]; then
                     echo "❌ [ERROR] Google BigQuery credentials are missing: Service Account JSON not provided"
@@ -937,8 +601,7 @@ spec:
                     fi
                   fi
                 fi
-                
-                # Snowflake Configuration
+
                 if [[ "${DATA_WAREHOUSE_PLATFORM,,}" == "snowflake" ]]; then
                   if [[ -z "$SNOWFLAKE_PRIVATE_KEY" || -z "$SNOWFLAKE_PASSPHRASE" ]]; then
                     echo "❌ [ERROR] Snowflake credentials are missing: Private Key and Passphrase not provided"
@@ -954,8 +617,7 @@ spec:
                     fi
                   fi
                 fi
-                
-                # Redshift Configuration
+
                 if [[ "${DATA_WAREHOUSE_PLATFORM,,}" == "redshift" ]]; then
                   if [[ -z "$REDSHIFT_PASSWORD" || -z "$REDSHIFT_USER" || -z "$REDSHIFT_HOST" || -z "$REDSHIFT_DATABASE" || -z "$REDSHIFT_PORT" ]]; then
                     echo "❌ [ERROR] Redshift credentials are missing: username and/or password not provided"
@@ -964,8 +626,7 @@ spec:
                     echo "✅ [SUCCESS] Redshift credentials validated"
                   fi
                 fi
-                
-                # Fabric Configuration
+
                 if [[ "${DATA_WAREHOUSE_PLATFORM,,}" == "fabric" ]]; then
                   if [[ -z "$FABRIC_SERVER" || -z "$FABRIC_DATABASE" || -z "$FABRIC_PORT" || -z "$FABRIC_USER" || -z "$FABRIC_PASSWORD" || -z "$FABRIC_AUTHENTICATION" ]]; then
                     echo "❌ [ERROR] Fabric credentials are missing: one or more required parameters not provided"
@@ -975,135 +636,159 @@ spec:
                   fi
                 fi
 
-                echo "📋 [CONFIG] Loading test coverage threshold configuration"
-                export TEST_COVERAGE_THRESHOLD=$(grep 'TEST_COVERAGE_THRESHOLD:' "$AIRFLOW_SECRET_FILE_NAME" | tail -n1 | awk '{print $2}' | tr -d "'")
-                
-                if [ -z "$TEST_COVERAGE_THRESHOLD" ]; then
-                  export TEST_COVERAGE_THRESHOLD='0.9'
-                  echo "📋 [CONFIG] Using default test coverage threshold: 90%"
-                else
-                  echo "📋 [CONFIG] Test coverage threshold configured from secrets"
-                fi
+                echo "🧹 [PROCESS] Removing legacy packages if present"
 
-                echo "🔧 [PROCESS] Removing re_data package if present..."
-                
-                #Remove Package re_data:
                 remove_re_data_package() {
                     local packages_file="${1:-packages.yml}"
-                    
-                    # Check if file exists
                     if [[ ! -f "$packages_file" ]]; then
                         echo "❌ [ERROR] File '$packages_file' not found" >&2
                         return 1
                     fi
-                    
-                    # Check if re-data/re_data exists in the file
                     if grep -q "package: re-data/re_data" "$packages_file"; then
-                        echo "🔧 [PROCESS] Found re-data/re_data package, removing it..."
-                        
-                        # Create a temporary file
+                        echo "⚙️ [PROCESS] Found re-data/re_data package, removing it..."
                         local temp_file=$(mktemp)
-                        
-                        # Use yq to remove the package entry
                         yq 'del(.packages[] | select(.package == "re-data/re_data"))' "$packages_file" > "$temp_file"
-                        
-                        # Check if yq command succeeded
                         if [[ $? -ne 0 ]]; then
                             echo "❌ [ERROR] Failed to process YAML with yq" >&2
                             rm -f "$temp_file"
                             return 1
                         fi
-                        
-                        # Replace original file with the modified version
                         mv "$temp_file" "$packages_file"
-                        
-                        echo "✅ [SUCCESS] Successfully removed re-data/re_data package from $packages_file"
-
-                        # Force recompilation by removing manifest
-                        echo "🔧 [PROCESS] Cleaning DBT cache for recompilation"
+                        echo "✅ [SUCCESS] Removed re-data/re_data package"
                         dbt clean --quiet 2>&1
-
-                        return 0
                     else
-                        echo "📋 [CONFIG] Package re-data/re_data not found in $packages_file"
-                        return 0
+                        echo "📋 [CONFIG] Package re-data/re_data not found — skipping"
                     fi
                 }
 
-                # Remove macro for Table Sample set_data_tablesample.sql
                 remove_set_data_tablesample_macro() {
-                    root_macro_folder="./macros"
-                    local macro_file="set_data_tablesample.sql"
-                    if [ -f "$root_macro_folder/$macro_file" ]; then
+                    local macro_file="./macros/set_data_tablesample.sql"
+                    if [ -f "$macro_file" ]; then
                         echo "⚙️ [PROCESS] Found set_data_tablesample.sql macro, removing it..."
-                        rm -f "$root_macro_folder/$macro_file"
-                        echo "✅ [SUCCESS] Successfully removed set_data_tablesample.sql macro"
+                        rm -f "$macro_file"
+                        echo "✅ [SUCCESS] Removed set_data_tablesample.sql macro"
                     else
-                        echo "📋 [CONFIG] set_data_tablesample.sql macro not found in $root_macro_folder"
-                        return 0
+                        echo "📋 [CONFIG] set_data_tablesample.sql macro not found — skipping"
                     fi
                 }
 
                 remove_set_data_tablesample_macro
-
                 remove_re_data_package
 
-                echo "⚙️ [PROCESS] Installing DBT dependencies..."
+                echo "==========================================="
+                echo "⚙️ [PROCESS] Installing DBT dependencies"
+                echo "==========================================="
                 dbt deps --quiet 2>&1
-                
-                echo "⚙️ [PROCESS] Building DBT models for testing..."
-                dbt build --target ${TARGET} --empty --quiet 2>&1
-                
-                echo "⚙️ [PROCESS] Generating DBT documentation..."
-                dbt docs generate --target ${TARGET} --quiet 2>&1
 
-                echo "🔍 [CHECK] Running DBT test completion validation..."
-                # Run the documentation check and display output in real-time
-                python /usr/app/dbt/dbt_lint/check_dbt_test.py 2>&1 | tee /dev/tty
-                doc_check_exit_code=${PIPESTATUS[0]}
+                # -----------------------------------------------
+                # TOOL 1: dbt-checkpoint — presence checks
+                # Runs only on files changed in this commit.
+                # Requires .pre-commit-config.yaml in project root.
+                # -----------------------------------------------
+                echo "==========================================="
+                echo "🔍 [CHECK] dbt-checkpoint: Presence checks on changed files"
+                echo "==========================================="
 
-                echo "📋 [CONFIG] Copying test completion log for error checking"
-                # Copy the log file to the parent directory for error checking
-                if [ -f "dbt_tests_completion.log" ]; then
-                  cp dbt_tests_completion.log ../dbt_tests_completion_lint.log
-                  echo "✅ [SUCCESS] Test completion log copied"
+                # Build list of changed dbt files belonging to this folder
+                CHANGED_DBT_FILES=""
+                if [ -f "/workdir/changed_files.txt" ]; then
+                  CHANGED_DBT_FILES=$(grep "^${folder}/" /workdir/changed_files.txt \
+                    | grep -E '\.(sql|yml|yaml)$' \
+                    | sed "s|^${folder}/||" \
+                    | tr '\n' ' ')
+                fi
+
+                if [ -n "$CHANGED_DBT_FILES" ]; then
+                  echo "📋 [INFO] Changed dbt files: $CHANGED_DBT_FILES"
+
+                  if [ -f ".pre-commit-config.yaml" ]; then
+                    echo "⚙️ [PROCESS] Running dbt parse (required by dbt-checkpoint)..."
+                    dbt parse --target ${TARGET} --quiet 2>&1
+
+                    echo "⚙️ [PROCESS] Running dbt-checkpoint hooks on changed files..."
+                    if pre-commit run --files $CHANGED_DBT_FILES 2>&1; then
+                      echo "✅ [SUCCESS] dbt-checkpoint: all presence checks passed"
+                    else
+                      echo "⚠️ [WARNING] dbt-checkpoint: issues found — review output above for missing descriptions or tests"
+                      QUALITY_FAILED=1
+                    fi
+                  else
+                    echo "⚠️ [WARNING] .pre-commit-config.yaml not found in $folder"
+                    echo "📋 [INFO] Copy templates/dbt-quality-check/.pre-commit-config.yaml to your dbt project root to enable dbt-checkpoint"
+                  fi
                 else
-                  echo "⚠️ [WARNING] Test completion log file not found"
+                  echo "📋 [INFO] No changed .sql/.yml files in $folder — skipping dbt-checkpoint"
+                fi
+
+                # -----------------------------------------------
+                # TOOL 2: dbt-project-evaluator — structural health
+                # Requires dbt_project_evaluator in packages.yml.
+                # Runs real queries against the warehouse.
+                # -----------------------------------------------
+                echo "==========================================="
+                echo "🔍 [CHECK] dbt-project-evaluator: Structural health check"
+                echo "==========================================="
+
+                if [ -d "dbt_packages/dbt_project_evaluator" ]; then
+                  # Schema name is fixed so the CI step always knows what to clean up.
+                  # The dbt_project.yml should set models.dbt_project_evaluator.+schema: dbt_evaluator_ci
+                  # (see templates/dbt-quality-check/dbt_project_addition.yml)
+                  EVALUATOR_SCHEMA="dbt_evaluator_ci"
+
+                  echo "⚙️ [PROCESS] Running dbt-project-evaluator (schema: ${EVALUATOR_SCHEMA})..."
+                  EVALUATOR_EXIT=0
+                  dbt build --target ${TARGET} --select package:dbt_project_evaluator 2>&1 || EVALUATOR_EXIT=$?
+
+                  if [ $EVALUATOR_EXIT -eq 0 ]; then
+                    echo "✅ [SUCCESS] dbt-project-evaluator: no structural violations found"
+                  else
+                    echo "⚠️ [WARNING] dbt-project-evaluator: structural violations detected — review output above"
+                    echo "📋 [INFO] See https://dbt-labs.github.io/dbt-project-evaluator/main/rules/ for rule explanations"
+                    QUALITY_FAILED=1
+                  fi
+
+                  # ── Cleanup: drop the evaluator schema via dbt run-operation ──
+                  # Warehouse-agnostic: the macro handles SQL differences per adapter.
+                  # The macro is shipped in the Docker image at /usr/app/dbt/macros/
+                  echo "🧹 [CLEANUP] Dropping evaluator schema via dbt run-operation: ${EVALUATOR_SCHEMA}"
+
+                  macros_path=$(yq '.["macro-paths"][] // "macros"' dbt_project.yml 2>/dev/null | xargs)
+                  macros_path="${macros_path:-macros}"
+
+                  if [ -f "/usr/app/dbt/macros/cleanup_evaluator_schema.sql" ]; then
+                    mkdir -p "${macros_path}"
+                    cp /usr/app/dbt/macros/cleanup_evaluator_schema.sql ./"${macros_path}"/
+                    dbt run-operation cleanup_evaluator_schema \
+                      --args "{\"schema_name\": \"${EVALUATOR_SCHEMA}\", \"dry_run\": False}" \
+                      --target="${TARGET}" 2>&1 | tee -a /workdir/evaluator_cleanup.log || \
+                      echo "⚠️ [CLEANUP] Evaluator schema cleanup failed — manual cleanup may be needed for schema: ${EVALUATOR_SCHEMA}"
+                    echo "✅ [CLEANUP] Evaluator schema cleanup complete"
+                  else
+                    echo "⚠️ [CLEANUP] cleanup_evaluator_schema.sql macro not found in Docker image"
+                    echo "📋 [INFO] Add the macro from templates/dbt-quality-check/macros/cleanup_evaluator_schema.sql to dbt-workflow-core"
+                  fi
+                else
+                  echo "⚠️ [WARNING] dbt_project_evaluator package not installed in $folder"
+                  echo "📋 [INFO] Add the package from templates/dbt-quality-check/packages_addition.yml to your packages.yml to enable structural health checks"
                 fi
 
                 cd ..
-
-                echo "🔍 [CHECK] Validating test completion results..."
-                # Check for errors in the log file
-                if [ -f "dbt_tests_completion_lint.log" ]; then
-                  if grep -q "^ERROR:" dbt_tests_completion_lint.log || [ $doc_check_exit_code -ne 0 ]; then
-                    echo "❌ [ERROR] Tests completion check failed. Check the logs for details."
-                    exit 1
-                  else
-                    echo "✅ [SUCCESS] Tests completion check passed for folder: $folder"
-                  fi
-                else
-                  echo "❌ [ERROR] Tests completion check log file not found"
-                  exit 1
-                fi
               else
-                echo "📋 [CONFIG] Working on root directory - skipping tests"
-                touch ../dbt_tests_completion_lint.log
-                echo "INFO: Working on root - skip" >> ../dbt_tests_completion_lint.log
+                echo "📋 [CONFIG] Working on root directory — skipping dbt quality checks"
               fi
             done < /workdir/changed_folders.txt
 
             echo "==========================================="
-            echo "✅ [SUCCESS] DBT Project tests completion procedure completed successfully"
+            if [ $QUALITY_FAILED -ne 0 ]; then
+              echo "⚠️ [WARNING] DBT quality checks found issues — review logs above for actionable feedback"
+              exit 1
+            else
+              echo "✅ [SUCCESS] All DBT quality checks passed"
+            fi
             echo "==========================================="
         env:
           - name: TARGET
             value: test
-          - name: AIRFLOW_SECRET_FILE_NAME
-            valueFrom:
-              secretKeyRef:
-                name: fastbi-argo-workflows-secrets
-                key: AIRFLOW_SECRET_FILE_NAME
           - name: DATA_WAREHOUSE_PLATFORM
             valueFrom:
               secretKeyRef:
@@ -1758,7 +1443,7 @@ spec:
       - name: dbt_workflow_core_image_name
         value: dbt-workflow-core
       - name: dbt_workflow_core_image_tag
-        value: v1.0.3
+        value: v1.1.0
       - name: data_analysis_import_core_image_name
         value: data-analysis-import-core
       - name: data_analysis_import_core_image_tag
