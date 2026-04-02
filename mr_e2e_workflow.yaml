@@ -483,35 +483,35 @@ spec:
             echo "📋 [CONFIG] Branch: {{inputs.parameters.branch}}"
             echo "==========================================="
 
-            cd /workdir/src
-
-            echo "==========================================="
-            echo "⚙️ [PROCESS] Compiling DBT Project Manifest"
-            echo "==========================================="
-            
-            dbt clean --quiet 2>&1
-            dbt deps --quiet 2>&1 | tee -a /workdir/compile_dbt_project_manifest.log || true
-            dbt parse --target $TARGET 2>&1 | tee -a /workdir/compile_dbt_project_manifest.log || true
-
-            if [ -f "./target/manifest.json" ]; then
-              echo "✅ [SUCCESS] DBT Manifest compiled ($(du -sh ./target/manifest.json | cut -f1))"
-            else
-              echo "❌ [ERROR] manifest.json was NOT generated — dbt parse may have failed silently"
+            branch_name="{{inputs.parameters.branch}}"
+            if [[ "$branch_name" =~ [^a-zA-Z0-9_] ]]; then
+              new_branch_name=$(echo "$branch_name" | sed 's/[^a-zA-Z0-9_]/_/g')
+              echo "⚠️ [WARNING] Branch name contains symbols. Changing branch name to: ${new_branch_name}"
+              branch_name="${new_branch_name}"
             fi
-            
-            echo "==========================================="
-            echo "⚙️ [PROCESS] Setting up E2E test sample table source data"
-            echo "==========================================="
+
+            echo "⚙️ [PROCESS] Updating GIT_BRANCH..."
+            git_branch=$(grep 'GIT_BRANCH:' $AIRFLOW_SECRET_FILE_NAME | tail -n1 | awk '{print $2}' | tr -d "'" ) || true
+            if [ -z "$git_branch" ]; then
+              echo "📋 [CONFIG] GIT_BRANCH: is empty - adding variable"
+              sed -i "$ a\  GIT_BRANCH: '${branch_name}'" $AIRFLOW_SECRET_FILE_NAME
+            else
+              sed -i "s/GIT_BRANCH.*/GIT_BRANCH: '${branch_name}'/" $AIRFLOW_SECRET_FILE_NAME
+            fi
+
+            export GIT_BRANCH=$(grep 'GIT_BRANCH:' $AIRFLOW_SECRET_FILE_NAME | tail -n1 | awk '{print $2}' | tr -d "'" )
+
+            cd /workdir/src
 
             python3 << 'PYEOF'
             import json
             import os
+            import subprocess
             import sys
 
             try:
                 import yaml
             except ImportError:
-                import subprocess
                 subprocess.check_call([sys.executable, '-m', 'pip', 'install', 'pyyaml', '-q'])
                 import yaml
 
@@ -519,6 +519,7 @@ spec:
             CHANGED_FOLDERS_PATH = '/workdir/changed_folders.txt'
             MATCHED_DAGS_PATH   = '/workdir/matched_dags.txt'
             SRC_DIR             = '/workdir/src'
+            COMPILE_DBT_LOG     = '/workdir/compile_dbt_project_manifest.log'
             AIRFLOW_SECRET_FILE_NAME = os.environ.get('AIRFLOW_SECRET_FILE_NAME', 'dbt_airflow_variables.yml')
             STRUCTURAL_FILES    = {'dynamic_dag_config.yml', 'dbt_project.yml', AIRFLOW_SECRET_FILE_NAME}
 
@@ -534,6 +535,51 @@ spec:
                         f.write('\n'.join(matched) + '\n')
                     else:
                         f.write('SKIP\n')
+
+            def dbt_target_from_airflow_vars(airflow_vars_path):
+                t = os.environ.get('TARGET', '').strip()
+                if t:
+                    return t
+                if not os.path.exists(airflow_vars_path):
+                    return ''
+                last = None
+                with open(airflow_vars_path) as f:
+                    for line in f:
+                        if 'TARGET:' in line:
+                            rest = line.split('TARGET:', 1)[1].strip()
+                            last = rest.strip().strip("'\"")
+                return last or ''
+
+            def compile_dbt_project_manifest(folder_path, airflow_vars_path):
+                """dbt clean, deps, parse in folder_path; append output to COMPILE_DBT_LOG (same as shell tee -a)."""
+                target = dbt_target_from_airflow_vars(airflow_vars_path)
+                print('===========================================')
+                print('⚙️ [PROCESS] Compiling DBT Project Manifest')
+                print('===========================================')
+                parse_cmd = ['dbt', 'parse', '--target', target] if target else ['dbt', 'parse']
+                with open(COMPILE_DBT_LOG, 'a', encoding='utf-8', errors='replace') as logf:
+                    for argv in (['dbt', 'clean', '--quiet'],
+                                 ['dbt', 'deps', '--quiet'],
+                                 parse_cmd):
+                        logf.write('\n--- %s (cwd=%s) ---\n' % (' '.join(argv), folder_path))
+                        logf.flush()
+                        proc = subprocess.run(
+                            argv,
+                            cwd=folder_path,
+                            stdout=subprocess.PIPE,
+                            stderr=subprocess.STDOUT,
+                            text=True,
+                            env=os.environ,
+                            errors='replace',
+                        )
+                        logf.write(proc.stdout or '')
+                        logf.flush()
+                manifest_path = os.path.join(folder_path, 'target', 'manifest.json')
+                if os.path.exists(manifest_path):
+                    sz = os.path.getsize(manifest_path)
+                    print('✅ [SUCCESS] DBT Manifest compiled (%s)' % sz)
+                else:
+                    print('❌ [ERROR] manifest.json was NOT generated — dbt parse may have failed silently')
 
             changed_files   = read_lines(CHANGED_FILES_PATH)
             changed_folders = [x for x in read_lines(CHANGED_FOLDERS_PATH) if x != 'README.md']
@@ -560,6 +606,8 @@ spec:
                     continue
 
                 print(f'Processing {folder}: {len(folder_changed_files)} changed files')
+
+                compile_dbt_project_manifest(folder_path, airflow_vars_path)
 
                 # Determine DYNAMIC_DAG flag
                 dynamic_dag = False
@@ -680,6 +728,8 @@ spec:
             echo "==========================================="
             echo "✅ [SUCCESS] Tag-based change detection completed"
         env:
+          - name: TARGET
+            value: "test"
           - name: AIRFLOW_SECRET_FILE_NAME
             valueFrom:
               secretKeyRef:
