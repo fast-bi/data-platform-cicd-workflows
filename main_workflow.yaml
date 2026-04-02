@@ -148,6 +148,7 @@ spec:
                   from: '{{steps.checkout.outputs.artifacts.repo-artifact}}'
                 - name: changed-files-artifact
                   from: '{{steps.detect-changes.outputs.artifacts.changed-files-artifact}}'
+            when: "{{workflow.parameters.da_dependencies_import}} == True"
           - name: data-model-data-governance-metadata-import
             template: data-model-data-governance-metadata-import
             arguments:
@@ -4588,6 +4589,8 @@ spec:
         value: docker.io
       - name: docker_image_repository
         value: 4fastbi
+      - name: da_dependencies_import
+        value: "True"
 #fast.bi CICD Pipeline Images
       - name: data_analysis_import_core_image_name
         value: data-analysis-import-core
