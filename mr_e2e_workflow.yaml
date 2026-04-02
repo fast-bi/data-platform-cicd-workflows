@@ -485,6 +485,30 @@ spec:
 
             cd /workdir/src
 
+            echo "==========================================="
+            echo "⚙️ [PROCESS] Generating manifests for changed folders"
+            echo "==========================================="
+
+            AIRFLOW_SECRET_FILE_NAME="${AIRFLOW_SECRET_FILE_NAME:-dbt_airflow_variables.yml}"
+
+            if [ -f /workdir/changed_folders.txt ]; then
+              while IFS= read -r folder; do
+                [ -z "$folder" ] && continue
+                folder_path="/workdir/src/${folder}"
+                if [ -d "$folder_path" ]; then
+                  echo "📋 [INFO] Parsing ${folder}..."
+                  cd "$folder_path"
+                  FOLDER_TARGET=$(grep 'TARGET:' "${AIRFLOW_SECRET_FILE_NAME}" 2>/dev/null | tail -n1 | awk '{print $2}' | tr -d "'")
+                  FOLDER_TARGET="${FOLDER_TARGET:-dev}"
+                  dbt deps --quiet 2>&1 || true
+                  dbt parse --quiet --target "${FOLDER_TARGET}" 2>&1 || true
+                  cd /workdir/src
+                else
+                  echo "⚠️ [WARNING] Folder ${folder} not found, skipping parse."
+                fi
+              done < /workdir/changed_folders.txt
+            fi
+
             python3 << 'PYEOF'
             import json
             import os
@@ -2192,10 +2216,9 @@ spec:
                 
                 dbt clean --quiet 2>&1
                 dbt deps --quiet 2>&1 | tee -a /workdir/compile_dbt_project_manifest.log || true
-                dbt seed --quiet --target $TARGET 2>&1 | tee -a /workdir/compile_dbt_project_manifest.log || true
-                dbt compile --exclude test_type:generic test_type:singular package:re_data --target $TARGET 2>&1 | tee -a /workdir/compile_dbt_project_manifest.log || true
-                
-                echo "✅ [SUCCESS] DBT Compilation completed"
+                dbt parse --quiet --target $TARGET 2>&1 | tee -a /workdir/compile_dbt_project_manifest.log || true
+
+                echo "✅ [SUCCESS] DBT Manifest compiled"
                 
                 echo "==========================================="
                 echo "⚙️ [PROCESS] Setting up E2E test sample table source data"

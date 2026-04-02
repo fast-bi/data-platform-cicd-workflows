@@ -738,16 +738,18 @@ spec:
                   echo "⚙️ [PROCESS] Running dbt-project-evaluator (schema: ${EVALUATOR_SCHEMA})..."
                   EVALUATOR_EXIT=0
 
-                  # Build evaluator models; suppress compilation noise with warn-level logs.
-                  # Failures here mean the evaluator models themselves failed to build,
-                  # not that violations were found — violations are reported in the next step.
+                  # Build evaluator models; use error-level logging to suppress
+                  # deprecation noise. Build failures = compilation errors, not violations.
                   dbt build --target ${TARGET} --select package:dbt_project_evaluator \
-                    --log-level warn 2>&1 || EVALUATOR_EXIT=$?
+                    --log-level error 2>&1 || EVALUATOR_EXIT=$?
 
                   # ── Violation report ──────────────────────────────────────
                   # Query the evaluator tables and print a per-model report.
-                  # The macro lives in the Docker image; it exits non-zero if
-                  # any violations are found so CI fails with a clear message.
+                  # The macro lives in the Docker image at /usr/app/dbt/macros/.
+                  # print() output in macros bypasses log-level, so --log-level error
+                  # silences all dbt chatter while keeping our report visible.
+                  # The macro calls exceptions.raise_compiler_error() when violations
+                  # exist, so REPORT_EXIT != 0 means violations found.
                   echo "==========================================="
                   echo "📊 [REPORT] dbt-project-evaluator violation report"
                   echo "==========================================="
@@ -757,7 +759,7 @@ spec:
                     dbt run-operation print_evaluator_violations \
                       --args "{\"schema_name\": \"${EVALUATOR_SCHEMA}\"}" \
                       --target "${TARGET}" \
-                      --log-level warn 2>&1 || REPORT_EXIT=$?
+                      --log-level error 2>&1 || REPORT_EXIT=$?
 
                     if [ $REPORT_EXIT -ne 0 ]; then
                       QUALITY_FAILED=1
