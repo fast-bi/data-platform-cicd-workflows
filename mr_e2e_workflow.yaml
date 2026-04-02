@@ -66,14 +66,6 @@ spec:
               parameters:
                 - name: branch
                   value: '{{inputs.parameters.branch}}'
-        - - name: compile-dbt-manifest-e2e
-            template: compile-dbt-manifest-e2e
-            arguments:
-              parameters:
-                - name: branch
-                  value: '{{inputs.parameters.branch}}'
-                - name: commit_short_sha
-                  value: '{{inputs.parameters.commit_short_sha}}'
         - - name: detect-changed-dbt-tags
             template: detect-changed-dbt-tags
             arguments:
@@ -100,6 +92,14 @@ spec:
                   value: '{{inputs.parameters.dbt_model_sharding}}'
                 - name: dbt_model
                   value: '{{inputs.parameters.dbt_model}}'
+        - - name: compile-dbt-manifest-e2e
+            template: compile-dbt-manifest-e2e
+            arguments:
+              parameters:
+                - name: branch
+                  value: '{{inputs.parameters.branch}}'
+                - name: commit_short_sha
+                  value: '{{inputs.parameters.commit_short_sha}}'
         - - name: compile-dag-e2e
             template: compile-dag-e2e
             arguments:
@@ -2192,9 +2192,10 @@ spec:
                 
                 dbt clean --quiet 2>&1
                 dbt deps --quiet 2>&1 | tee -a /workdir/compile_dbt_project_manifest.log || true
-                dbt parse --quiet --target $TARGET 2>&1 | tee -a /workdir/compile_dbt_project_manifest.log || true
-
-                echo "✅ [SUCCESS] DBT Manifest compiled"
+                dbt seed --quiet --target $TARGET 2>&1 | tee -a /workdir/compile_dbt_project_manifest.log || true
+                dbt compile --exclude test_type:generic test_type:singular package:re_data --target $TARGET 2>&1 | tee -a /workdir/compile_dbt_project_manifest.log || true
+                
+                echo "✅ [SUCCESS] DBT Compilation completed"
                 
                 echo "==========================================="
                 echo "⚙️ [PROCESS] Setting up E2E test sample table source data"
