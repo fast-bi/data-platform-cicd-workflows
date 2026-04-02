@@ -570,6 +570,7 @@ spec:
             echo "📋 [CONFIG] Tool: dbt-bouncer (manifest-only, no warehouse queries)"
             echo "==========================================="
 
+            export GIT_BRANCH={{inputs.parameters.branch}}
             QUALITY_FAILED=0
 
             cd /workdir/src
@@ -641,17 +642,31 @@ spec:
                 echo "🔍 [CHECK] dbt-bouncer: manifest quality checks"
                 echo "==========================================="
 
-                if [ -f "dbt-bouncer.yml" ]; then
-                  if dbt-bouncer run --config-file dbt-bouncer.yml 2>&1; then
-                    echo "✅ [SUCCESS] dbt-bouncer: all quality checks passed"
-                  else
-                    echo "⚠️ [WARNING] dbt-bouncer: quality issues found — review output above"
-                    QUALITY_FAILED=1
-                  fi
-                else
-                  echo "⚠️ [WARNING] dbt-bouncer.yml not found in $folder"
-                  echo "📋 [INFO] Copy templates/dbt-quality-check/dbt-bouncer.yml to your dbt project root to enable quality checks"
+                BOUNCER_CONFIG="dbt-bouncer.yml"
+                BOUNCER_TEMP=0
+                if [ ! -f "$BOUNCER_CONFIG" ]; then
+                  echo "⚠️ [WARNING] dbt-bouncer.yml not found in $folder — using default checks"
+                  echo "📋 [INFO] Copy templates/dbt-quality-check/dbt-bouncer.yml to your dbt project root to customise checks"
+                  BOUNCER_CONFIG="/tmp/dbt-bouncer-default.yml"
+                  BOUNCER_TEMP=1
+                  cat > "$BOUNCER_CONFIG" <<'BOUNCER_EOF'
+manifest_checks:
+  - name: check_model_documentation_coverage
+    min_model_documentation_coverage_pct: 90
+    exclude: ^dbt_packages
+  - name: check_model_has_unique_test
+    exclude: ^dbt_packages
+BOUNCER_EOF
                 fi
+
+                if dbt-bouncer run --config-file "$BOUNCER_CONFIG" 2>&1; then
+                  echo "✅ [SUCCESS] dbt-bouncer: all quality checks passed"
+                else
+                  echo "⚠️ [WARNING] dbt-bouncer: quality issues found — review output above"
+                  QUALITY_FAILED=1
+                fi
+
+                [ $BOUNCER_TEMP -eq 1 ] && rm -f "$BOUNCER_CONFIG"
 
                 cd ..
               else
