@@ -307,13 +307,15 @@ spec:
             echo "🔍 [CHECK] Comparing {{inputs.parameters.target_branch}} with {{inputs.parameters.revision}}"
 
             git diff --name-only remotes/origin/{{inputs.parameters.target_branch}}...{{inputs.parameters.revision}} \
+              | grep -v '/dbt_packages/' \
               | cut -d'/' -f1 \
               | sort \
               | uniq > /workdir/changed_folders.txt || { echo "❌ [ERROR] Failed to identify changed folders"; exit 1; }
 
             echo "⚙️ [PROCESS] Capturing full changed file paths..."
             git diff --name-only remotes/origin/{{inputs.parameters.target_branch}}...{{inputs.parameters.revision}} \
-              | grep -v '^\.' > /workdir/changed_files.txt || true
+              | grep -v '^\.' \
+              | grep -v '/dbt_packages/' > /workdir/changed_files.txt || true
             if [ ! -s /workdir/changed_files.txt ]; then
               echo "" > /workdir/changed_files.txt
             fi

@@ -737,13 +737,34 @@ spec:
 
                   echo "⚙️ [PROCESS] Running dbt-project-evaluator (schema: ${EVALUATOR_SCHEMA})..."
                   EVALUATOR_EXIT=0
-                  dbt build --target ${TARGET} --select package:dbt_project_evaluator 2>&1 || EVALUATOR_EXIT=$?
+
+                  # Build evaluator models; suppress compilation noise with warn-level logs.
+                  # Failures here mean the evaluator models themselves failed to build,
+                  # not that violations were found — violations are reported in the next step.
+                  dbt build --target ${TARGET} --select package:dbt_project_evaluator \
+                    --log-level warn 2>&1 || EVALUATOR_EXIT=$?
+
+                  # ── Violation report ──────────────────────────────────────
+                  # Query the evaluator tables and print a per-model report.
+                  # The macro lives in the Docker image; it exits non-zero if
+                  # any violations are found so CI fails with a clear message.
+                  echo "==========================================="
+                  echo "📊 [REPORT] dbt-project-evaluator violation report"
+                  echo "==========================================="
 
                   if [ $EVALUATOR_EXIT -eq 0 ]; then
-                    echo "✅ [SUCCESS] dbt-project-evaluator: no structural violations found"
+                    REPORT_EXIT=0
+                    dbt run-operation print_evaluator_violations \
+                      --args "{\"schema_name\": \"${EVALUATOR_SCHEMA}\"}" \
+                      --target "${TARGET}" \
+                      --log-level warn 2>&1 || REPORT_EXIT=$?
+
+                    if [ $REPORT_EXIT -ne 0 ]; then
+                      QUALITY_FAILED=1
+                    fi
                   else
-                    echo "⚠️ [WARNING] dbt-project-evaluator: structural violations detected — review output above"
-                    echo "📋 [INFO] See https://dbt-labs.github.io/dbt-project-evaluator/main/rules/ for rule explanations"
+                    echo "⚠️ [WARNING] Evaluator build failed — models may have compilation errors"
+                    echo "📋 [INFO] Re-run with --log-level info to see full build output"
                     QUALITY_FAILED=1
                   fi
 

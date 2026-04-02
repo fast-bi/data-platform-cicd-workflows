@@ -5,3 +5,4 @@ logs/
 .vscode/
 .dbt/
 test_localy.sh
+templates/
