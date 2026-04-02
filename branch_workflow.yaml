@@ -563,15 +563,13 @@ spec:
           - |
             #!/bin/bash
 
-
             echo "==========================================="
-            echo "🚀 [INFO] DBT Project Quality Check"
+            echo "🚀 [INFO] DBT Project Quality Check (dbt-bouncer)"
             echo "📋 [CONFIG] Branch: {{inputs.parameters.branch}}"
             echo "📋 [CONFIG] Commit: {{inputs.parameters.commit_short_sha}}"
-            echo "📋 [CONFIG] Checks: dbt-checkpoint (presence) + dbt-project-evaluator (structure)"
+            echo "📋 [CONFIG] Tool: dbt-bouncer (manifest-only, no warehouse queries)"
             echo "==========================================="
 
-            export GIT_BRANCH={{inputs.parameters.branch}}
             QUALITY_FAILED=0
 
             cd /workdir/src
@@ -579,62 +577,10 @@ spec:
             while read folder; do
               if [ -d "$folder" ]; then
                 echo "==========================================="
-                echo "⚙️ [PROCESS] Running quality checks in: $folder"
+                echo "⚙️ [PROCESS] Running dbt-bouncer in: $folder"
                 echo "==========================================="
 
                 cd "$folder"
-
-                echo "🔐 [CONFIG] Setting up Data Warehouse Credentials"
-
-                if [[ "${DATA_WAREHOUSE_PLATFORM,,}" == "bigquery" ]]; then
-                  if [[ -z "$GCP_SA_SECRET" ]]; then
-                    echo "❌ [ERROR] Google BigQuery credentials are missing: Service Account JSON not provided"
-                    exit 1
-                  else
-                    if [[ -z "$GOOGLE_APPLICATION_CREDENTIALS" ]]; then
-                      echo "🔐 [CONFIG] Configuring BigQuery service account authentication"
-                      echo "$GCP_SA_SECRET" | base64 --decode > /secrets/sa.json
-                      gcloud auth activate-service-account --key-file /secrets/sa.json
-                      gcloud config set project $GCP_PROJECT_NAME
-                      export GOOGLE_APPLICATION_CREDENTIALS="/secrets/sa.json"
-                      echo "✅ [SUCCESS] BigQuery authentication configured"
-                    fi
-                  fi
-                fi
-
-                if [[ "${DATA_WAREHOUSE_PLATFORM,,}" == "snowflake" ]]; then
-                  if [[ -z "$SNOWFLAKE_PRIVATE_KEY" || -z "$SNOWFLAKE_PASSPHRASE" ]]; then
-                    echo "❌ [ERROR] Snowflake credentials are missing: Private Key and Passphrase not provided"
-                    exit 1
-                  else
-                    if [[ -z "$SNOWSQL_PRIVATE_KEY_PASSPHRASE" ]]; then
-                      echo "🔐 [CONFIG] Configuring Snowflake private key authentication"
-                      mkdir -p /snowsql/secrets/
-                      echo "$SNOWFLAKE_PRIVATE_KEY" > /snowsql/secrets/rsa_key.p8
-                      chmod 600 /snowsql/secrets/rsa_key.p8
-                      export SNOWSQL_PRIVATE_KEY_PASSPHRASE=$SNOWFLAKE_PASSPHRASE
-                      echo "✅ [SUCCESS] Snowflake authentication configured"
-                    fi
-                  fi
-                fi
-
-                if [[ "${DATA_WAREHOUSE_PLATFORM,,}" == "redshift" ]]; then
-                  if [[ -z "$REDSHIFT_PASSWORD" || -z "$REDSHIFT_USER" || -z "$REDSHIFT_HOST" || -z "$REDSHIFT_DATABASE" || -z "$REDSHIFT_PORT" ]]; then
-                    echo "❌ [ERROR] Redshift credentials are missing: username and/or password not provided"
-                    exit 1
-                  else
-                    echo "✅ [SUCCESS] Redshift credentials validated"
-                  fi
-                fi
-
-                if [[ "${DATA_WAREHOUSE_PLATFORM,,}" == "fabric" ]]; then
-                  if [[ -z "$FABRIC_SERVER" || -z "$FABRIC_DATABASE" || -z "$FABRIC_PORT" || -z "$FABRIC_USER" || -z "$FABRIC_PASSWORD" || -z "$FABRIC_AUTHENTICATION" ]]; then
-                    echo "❌ [ERROR] Fabric credentials are missing: one or more required parameters not provided"
-                    exit 1
-                  else
-                    echo "✅ [SUCCESS] Fabric credentials validated"
-                  fi
-                fi
 
                 echo "🧹 [PROCESS] Removing legacy packages if present"
 
@@ -680,119 +626,31 @@ spec:
                 echo "==========================================="
                 dbt deps --quiet 2>&1
 
+                echo "==========================================="
+                echo "⚙️ [PROCESS] Generating DBT manifest (dbt parse)"
+                echo "==========================================="
+                dbt parse --target ${TARGET} --quiet 2>&1
+
                 # -----------------------------------------------
-                # TOOL 1: dbt-checkpoint — presence checks
-                # Runs only on files changed in this commit.
-                # Requires .pre-commit-config.yaml in project root.
+                # dbt-bouncer — manifest-only quality gate
+                # No warehouse connections required.
+                # Config: dbt-bouncer.yml in the project root.
+                # Template: templates/dbt-quality-check/dbt-bouncer.yml
                 # -----------------------------------------------
                 echo "==========================================="
-                echo "🔍 [CHECK] dbt-checkpoint: Presence checks on changed files"
+                echo "🔍 [CHECK] dbt-bouncer: manifest quality checks"
                 echo "==========================================="
 
-                # Build list of changed dbt files belonging to this folder
-                CHANGED_DBT_FILES=""
-                if [ -f "/workdir/changed_files.txt" ]; then
-                  CHANGED_DBT_FILES=$(grep "^${folder}/" /workdir/changed_files.txt \
-                    | grep -E '\.(sql|yml|yaml)$' \
-                    | sed "s|^${folder}/||" \
-                    | tr '\n' ' ')
-                fi
-
-                if [ -n "$CHANGED_DBT_FILES" ]; then
-                  echo "📋 [INFO] Changed dbt files: $CHANGED_DBT_FILES"
-
-                  if [ -f ".pre-commit-config.yaml" ]; then
-                    echo "⚙️ [PROCESS] Running dbt parse (required by dbt-checkpoint)..."
-                    dbt parse --target ${TARGET} --quiet 2>&1
-
-                    echo "⚙️ [PROCESS] Running dbt-checkpoint hooks on changed files..."
-                    if pre-commit run --files $CHANGED_DBT_FILES 2>&1; then
-                      echo "✅ [SUCCESS] dbt-checkpoint: all presence checks passed"
-                    else
-                      echo "⚠️ [WARNING] dbt-checkpoint: issues found — review output above for missing descriptions or tests"
-                      QUALITY_FAILED=1
-                    fi
+                if [ -f "dbt-bouncer.yml" ]; then
+                  if dbt-bouncer run --config-file dbt-bouncer.yml 2>&1; then
+                    echo "✅ [SUCCESS] dbt-bouncer: all quality checks passed"
                   else
-                    echo "⚠️ [WARNING] .pre-commit-config.yaml not found in $folder"
-                    echo "📋 [INFO] Copy templates/dbt-quality-check/.pre-commit-config.yaml to your dbt project root to enable dbt-checkpoint"
-                  fi
-                else
-                  echo "📋 [INFO] No changed .sql/.yml files in $folder — skipping dbt-checkpoint"
-                fi
-
-                # -----------------------------------------------
-                # TOOL 2: dbt-project-evaluator — structural health
-                # Requires dbt_project_evaluator in packages.yml.
-                # Runs real queries against the warehouse.
-                # -----------------------------------------------
-                echo "==========================================="
-                echo "🔍 [CHECK] dbt-project-evaluator: Structural health check"
-                echo "==========================================="
-
-                if [ -d "dbt_packages/dbt_project_evaluator" ]; then
-                  # Schema name is fixed so the CI step always knows what to clean up.
-                  # The dbt_project.yml should set models.dbt_project_evaluator.+schema: dbt_evaluator_ci
-                  # (see templates/dbt-quality-check/dbt_project_addition.yml)
-                  EVALUATOR_SCHEMA="dbt_evaluator_ci"
-
-                  echo "⚙️ [PROCESS] Running dbt-project-evaluator (schema: ${EVALUATOR_SCHEMA})..."
-                  EVALUATOR_EXIT=0
-
-                  # Build evaluator models; use error-level logging to suppress
-                  # deprecation noise. Build failures = compilation errors, not violations.
-                  dbt build --target ${TARGET} --select package:dbt_project_evaluator \
-                    --log-level error 2>&1 || EVALUATOR_EXIT=$?
-
-                  # ── Violation report ──────────────────────────────────────
-                  # Query the evaluator tables and print a per-model report.
-                  # The macro lives in the Docker image at /usr/app/dbt/macros/.
-                  # print() output in macros bypasses log-level, so --log-level error
-                  # silences all dbt chatter while keeping our report visible.
-                  # The macro calls exceptions.raise_compiler_error() when violations
-                  # exist, so REPORT_EXIT != 0 means violations found.
-                  echo "==========================================="
-                  echo "📊 [REPORT] dbt-project-evaluator violation report"
-                  echo "==========================================="
-
-                  if [ $EVALUATOR_EXIT -eq 0 ]; then
-                    REPORT_EXIT=0
-                    dbt run-operation print_evaluator_violations \
-                      --args "{\"schema_name\": \"${EVALUATOR_SCHEMA}\"}" \
-                      --target "${TARGET}" \
-                      --log-level error 2>&1 || REPORT_EXIT=$?
-
-                    if [ $REPORT_EXIT -ne 0 ]; then
-                      QUALITY_FAILED=1
-                    fi
-                  else
-                    echo "⚠️ [WARNING] Evaluator build failed — models may have compilation errors"
-                    echo "📋 [INFO] Re-run with --log-level info to see full build output"
+                    echo "⚠️ [WARNING] dbt-bouncer: quality issues found — review output above"
                     QUALITY_FAILED=1
                   fi
-
-                  # ── Cleanup: drop the evaluator schema via dbt run-operation ──
-                  # Warehouse-agnostic: the macro handles SQL differences per adapter.
-                  # The macro is shipped in the Docker image at /usr/app/dbt/macros/
-                  echo "🧹 [CLEANUP] Dropping evaluator schema via dbt run-operation: ${EVALUATOR_SCHEMA}"
-
-                  macros_path=$(yq '.["macro-paths"][] // "macros"' dbt_project.yml 2>/dev/null | xargs)
-                  macros_path="${macros_path:-macros}"
-
-                  if [ -f "/usr/app/dbt/macros/cleanup_evaluator_schema.sql" ]; then
-                    mkdir -p "${macros_path}"
-                    cp /usr/app/dbt/macros/cleanup_evaluator_schema.sql ./"${macros_path}"/
-                    dbt run-operation cleanup_evaluator_schema \
-                      --args "{\"schema_name\": \"${EVALUATOR_SCHEMA}\", \"dry_run\": False}" \
-                      --target="${TARGET}" 2>&1 | tee -a /workdir/evaluator_cleanup.log || \
-                      echo "⚠️ [CLEANUP] Evaluator schema cleanup failed — manual cleanup may be needed for schema: ${EVALUATOR_SCHEMA}"
-                    echo "✅ [CLEANUP] Evaluator schema cleanup complete"
-                  else
-                    echo "⚠️ [CLEANUP] cleanup_evaluator_schema.sql macro not found in Docker image"
-                    echo "📋 [INFO] Add the macro from templates/dbt-quality-check/macros/cleanup_evaluator_schema.sql to dbt-workflow-core"
-                  fi
                 else
-                  echo "⚠️ [WARNING] dbt_project_evaluator package not installed in $folder"
-                  echo "📋 [INFO] Add the package from templates/dbt-quality-check/packages_addition.yml to your packages.yml to enable structural health checks"
+                  echo "⚠️ [WARNING] dbt-bouncer.yml not found in $folder"
+                  echo "📋 [INFO] Copy templates/dbt-quality-check/dbt-bouncer.yml to your dbt project root to enable quality checks"
                 fi
 
                 cd ..
@@ -812,108 +670,10 @@ spec:
         env:
           - name: TARGET
             value: test
-          - name: DATA_WAREHOUSE_PLATFORM
-            valueFrom:
-              secretKeyRef:
-                name: fastbi-argo-workflows-secrets
-                key: DATA_WAREHOUSE_PLATFORM
-          - name: GCP_PROJECT_NAME
-            valueFrom:
-              secretKeyRef:
-                name: fastbi-argo-workflows-secrets
-                key: GCP_PROJECT_NAME
-          - name: GCP_SA_SECRET
-            valueFrom:
-              secretKeyRef:
-                name: fastbi-argo-workflows-secrets
-                key: GCP_SA_SECRET
-          # Redshift secrets
-          - name: REDSHIFT_HOST
-            valueFrom:
-              secretKeyRef:
-                name: fastbi-argo-workflows-secrets
-                key: REDSHIFT_HOST
-                optional: true
-          - name: REDSHIFT_DATABASE
-            valueFrom:
-              secretKeyRef:
-                name: fastbi-argo-workflows-secrets
-                key: REDSHIFT_DATABASE
-                optional: true
-          - name: REDSHIFT_PORT
-            valueFrom:
-              secretKeyRef:
-                name: fastbi-argo-workflows-secrets
-                key: REDSHIFT_PORT
-                optional: true
-          - name: REDSHIFT_USER
-            valueFrom:
-              secretKeyRef:
-                name: fastbi-argo-workflows-secrets
-                key: REDSHIFT_USER
-                optional: true
-          - name: REDSHIFT_PASSWORD
-            valueFrom:
-              secretKeyRef:
-                name: fastbi-argo-workflows-secrets
-                key: REDSHIFT_PASSWORD
-                optional: true
-          # Snowflake secrets
-          - name: SNOWFLAKE_PRIVATE_KEY
-            valueFrom:
-              secretKeyRef:
-                name: fastbi-argo-workflows-secrets
-                key: SNOWFLAKE_PRIVATE_KEY
-                optional: true
-          - name: SNOWFLAKE_PASSPHRASE
-            valueFrom:
-              secretKeyRef:
-                name: fastbi-argo-workflows-secrets
-                key: SNOWFLAKE_PASSPHRASE
-                optional: true
-          # Fabric secrets
-          - name: FABRIC_SERVER
-            valueFrom:
-              secretKeyRef:
-                name: fastbi-argo-workflows-secrets
-                key: FABRIC_SERVER
-                optional: true
-          - name: FABRIC_DATABASE
-            valueFrom:
-              secretKeyRef:
-                name: fastbi-argo-workflows-secrets
-                key: FABRIC_DATABASE
-                optional: true
-          - name: FABRIC_PORT
-            valueFrom:
-              secretKeyRef:
-                name: fastbi-argo-workflows-secrets
-                key: FABRIC_PORT
-                optional: true
-          - name: FABRIC_USER
-            valueFrom:
-              secretKeyRef:
-                name: fastbi-argo-workflows-secrets
-                key: FABRIC_USER
-                optional: true
-          - name: FABRIC_PASSWORD
-            valueFrom:
-              secretKeyRef:
-                name: fastbi-argo-workflows-secrets
-                key: FABRIC_PASSWORD
-                optional: true
-          - name: FABRIC_AUTHENTICATION
-            valueFrom:
-              secretKeyRef:
-                name: fastbi-argo-workflows-secrets
-                key: FABRIC_AUTHENTICATION
-                optional: true
         resources: {}
         volumeMounts:
           - name: workdir
             mountPath: /workdir
-          - name: gcp-sa-secret-file
-            mountPath: /secrets
     - name: validating-da-dependencies
       inputs:
         parameters:

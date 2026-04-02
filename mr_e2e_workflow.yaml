@@ -138,6 +138,7 @@ spec:
                   value: '{{inputs.parameters.branch}}'
                 - name: commit_short_sha
                   value: '{{inputs.parameters.commit_short_sha}}'
+            when: "{{workflow.parameters.da_dependencies_import}} == True"
         - - name: data-model-e2e-data-tagging
             template: data-model-e2e-data-tagging
             arguments:
@@ -146,6 +147,7 @@ spec:
                   value: '{{inputs.parameters.branch}}'
                 - name: commit_short_sha
                   value: '{{inputs.parameters.commit_short_sha}}'
+            when: "{{workflow.parameters.e2e_data_tagging}} == True"
         - - name: data-model-e2e-data-cleanning
             template: data-model-e2e-data-cleanning
             arguments:
@@ -5662,6 +5664,10 @@ spec:
         value: docker.io
       - name: docker_image_repository
         value: 4fastbi
+      - name: da_dependencies_import
+        value: "True"
+      - name: e2e_data_tagging
+        value: "True"
 #fast.bi CICD Pipeline Images
       - name: data_analysis_import_core_image_name
         value: data-analysis-import-core
