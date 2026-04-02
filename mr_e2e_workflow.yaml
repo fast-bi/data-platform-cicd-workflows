@@ -4093,7 +4093,22 @@ spec:
                 fi
                 
                 touch /workdir/create_dbt_bq_dataset_labels.log || { echo "❌ [ERROR] Failed to create log file"; exit 1; }
-                
+
+                # For dynamic DAG projects, restrict labeling to matched DAG tags only
+                export E2E_MATCHED_TAGS=""
+                DYNAMIC_DAG_VAL=$(grep 'DYNAMIC_DAG:' "${AIRFLOW_SECRET_FILE_NAME}" 2>/dev/null | tail -n1 | awk '{print $2}' | tr -d "'")
+                if [[ "${DYNAMIC_DAG_VAL,,}" == "true" ]] && [ -f /workdir/matched_dags.txt ] && [ -f dynamic_dag_config.yml ]; then
+                  MATCHED_DAG_NAMES=$(grep "^${folder}:" /workdir/matched_dags.txt | cut -d: -f2)
+                  ALL_TAGS=""
+                  for dag_name in $MATCHED_DAG_NAMES; do
+                    DAG_TAGS=$(yq -r ".dags.${dag_name}.dbt_tags // [] | .[]" dynamic_dag_config.yml 2>/dev/null | tr '\n' ',')
+                    ALL_TAGS="${ALL_TAGS}${DAG_TAGS}"
+                  done
+                  E2E_MATCHED_TAGS=$(echo "$ALL_TAGS" | sed 's/,$//' | tr ',' '\n' | sort -u | tr '\n' ',' | sed 's/,$//')
+                  echo "📋 [CONFIG] Dynamic DAG — restricting labeling to tags: ${E2E_MATCHED_TAGS}"
+                fi
+                export E2E_MATCHED_TAGS
+
                 echo "🔍 [CHECK] Validating platform configuration"
                 if [ "${PLATFORM,,}" == "composer" ]; then
                   echo "📋 [CONFIG] Platform: Composer"
@@ -4445,6 +4460,21 @@ spec:
 
                 touch /workdir/data_model_e2e_data_cleanning.log
 
+                # For dynamic DAG projects, restrict cleanup to matched DAG tags only
+                CLEANUP_TAGS_ARG='{"dry_run": False}'
+                DYNAMIC_DAG_VAL=$(grep 'DYNAMIC_DAG:' "${AIRFLOW_SECRET_FILE_NAME}" 2>/dev/null | tail -n1 | awk '{print $2}' | tr -d "'")
+                if [[ "${DYNAMIC_DAG_VAL,,}" == "true" ]] && [ -f /workdir/matched_dags.txt ] && [ -f dynamic_dag_config.yml ]; then
+                  MATCHED_DAG_NAMES=$(grep "^${folder}:" /workdir/matched_dags.txt | cut -d: -f2)
+                  ALL_TAGS=""
+                  for dag_name in $MATCHED_DAG_NAMES; do
+                    DAG_TAGS=$(yq -r ".dags.${dag_name}.dbt_tags // [] | .[]" dynamic_dag_config.yml 2>/dev/null | tr '\n' ' ')
+                    ALL_TAGS="${ALL_TAGS} ${DAG_TAGS}"
+                  done
+                  TAGS_JSON=$(echo "$ALL_TAGS" | xargs -n1 | sort -u | jq -R . | jq -sc .)
+                  CLEANUP_TAGS_ARG="{\"dry_run\": false, \"tags\": ${TAGS_JSON}}"
+                  echo "📋 [CONFIG] Dynamic DAG — restricting cleanup to tags: ${TAGS_JSON}"
+                fi
+
                 # ===========================================
                 # 🏗️ [PLATFORM] Platform-Specific Processing
                 # ===========================================
@@ -4495,7 +4525,7 @@ spec:
                     echo "⚙️ [PROCESS] Executing DBT cleanup operation..."
                     if [[ ! -z "${TARGET}" ]]; then
                       echo "📋 [CONFIG] Running warehouse cleanup with target: ${TARGET}"
-                      dbt run-operation cleanup_dbt_dataset --args '{"dry_run": False}' --target="${TARGET}" 2>&1 | tee -a /workdir/data_model_e2e_data_cleanning.log || true
+                      dbt run-operation cleanup_dbt_dataset --args "${CLEANUP_TAGS_ARG}" --target="${TARGET}" 2>&1 | tee -a /workdir/data_model_e2e_data_cleanning.log || true
                     else
                       echo "📋 [CONFIG] Running warehouse cleanup in dry-run mode"
                       dbt run-operation cleanup_dbt_dataset --args '{"dry_run": True}'
@@ -4568,7 +4598,7 @@ spec:
                     echo "⚙️ [PROCESS] Executing DBT cleanup operation..."
                     if [[ ! -z "${TARGET}" ]]; then
                       echo "📋 [CONFIG] Running warehouse cleanup with target: ${TARGET}"
-                      dbt run-operation cleanup_dbt_dataset --args '{"dry_run": False}' --target="${TARGET}" 2>&1 | tee -a /workdir/data_model_e2e_data_cleanning.log || true
+                      dbt run-operation cleanup_dbt_dataset --args "${CLEANUP_TAGS_ARG}" --target="${TARGET}" 2>&1 | tee -a /workdir/data_model_e2e_data_cleanning.log || true
                     else
                       echo "📋 [CONFIG] Running warehouse cleanup in dry-run mode"
                       dbt run-operation cleanup_dbt_dataset --args '{"dry_run": True}'
