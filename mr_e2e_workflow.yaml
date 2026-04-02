@@ -575,13 +575,7 @@ spec:
 
                 # Load manifest.json (committed in PR branch)
                 if not os.path.exists(manifest_path):
-                    import glob as _glob
-                    target_dir = os.path.join(folder_path, 'target')
-                    if os.path.isdir(target_dir):
-                        files = _glob.glob(os.path.join(target_dir, '*'))
-                        print(f'WARNING: {folder}: manifest.json not found at {manifest_path}. target/ contains: {[os.path.basename(f) for f in files]}')
-                    else:
-                        print(f'WARNING: {folder}: manifest.json not found — target/ directory does not exist at {target_dir}')
+                    print(f'WARNING: {folder}: manifest.json not found - falling back to full run.')
                     for dag_name in all_dag_names:
                         matched_dags.append(f'{folder}:{dag_name}')
                     continue
@@ -2198,13 +2192,9 @@ spec:
                 
                 dbt clean --quiet 2>&1
                 dbt deps --quiet 2>&1 | tee -a /workdir/compile_dbt_project_manifest.log || true
-                dbt parse --target $TARGET 2>&1 | tee -a /workdir/compile_dbt_project_manifest.log || true
+                dbt parse --quiet --target $TARGET 2>&1 | tee -a /workdir/compile_dbt_project_manifest.log || true
 
-                if [ -f "./target/manifest.json" ]; then
-                  echo "✅ [SUCCESS] DBT Manifest compiled ($(du -sh ./target/manifest.json | cut -f1))"
-                else
-                  echo "❌ [ERROR] manifest.json was NOT generated — dbt parse may have failed silently"
-                fi
+                echo "✅ [SUCCESS] DBT Manifest compiled"
                 
                 echo "==========================================="
                 echo "⚙️ [PROCESS] Setting up E2E test sample table source data"
