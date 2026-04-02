@@ -66,6 +66,12 @@ spec:
               parameters:
                 - name: branch
                   value: '{{inputs.parameters.branch}}'
+        - - name: detect-changed-dbt-tags
+            template: detect-changed-dbt-tags
+            arguments:
+              parameters:
+                - name: branch
+                  value: '{{inputs.parameters.branch}}'
         - - name: data-orchestration-variables-import-e2e
             template: data-orchestration-variables-import-e2e
             arguments:
@@ -305,6 +311,14 @@ spec:
               | sort \
               | uniq > /workdir/changed_folders.txt || { echo "❌ [ERROR] Failed to identify changed folders"; exit 1; }
 
+            echo "⚙️ [PROCESS] Capturing full changed file paths..."
+            git diff --name-only remotes/origin/{{inputs.parameters.target_branch}}...{{inputs.parameters.revision}} \
+              | grep -v '^\.' > /workdir/changed_files.txt || true
+            if [ ! -s /workdir/changed_files.txt ]; then
+              echo "" > /workdir/changed_files.txt
+            fi
+            echo "📋 [CONFIG] Changed files count: $(wc -l < /workdir/changed_files.txt)"
+
             # ===========================================
             # Filter Hidden Folders
             # ===========================================
@@ -442,6 +456,215 @@ spec:
             echo "✅ [SUCCESS] DBT YML File Linting Procedure Completed"
             echo "✅ [SUCCESS] All YAML files validated successfully"
             echo "✅ [SUCCESS] ==========================================="
+        resources: {}
+        volumeMounts:
+          - name: workdir
+            mountPath: /workdir
+    - name: detect-changed-dbt-tags
+      inputs:
+        parameters:
+          - name: branch
+      outputs: {}
+      metadata: {}
+      container:
+        name: ''
+        image: '{{workflow.parameters.docker_image_repository_hub}}/{{workflow.parameters.docker_image_repository}}/{{workflow.parameters.data_orchestrator_core_image_name}}:{{workflow.parameters.data_orchestrator_core_image_tag}}'
+        command:
+          - bash
+          - '-c'
+        args:
+          - |
+            #!/bin/bash
+
+            echo "==========================================="
+            echo "🚀 [INFO] DBT Tag-Based Change Detection"
+            echo "📋 [CONFIG] Branch: {{inputs.parameters.branch}}"
+            echo "==========================================="
+
+            cd /workdir/src
+
+            python3 << 'PYEOF'
+            import json
+            import os
+            import sys
+
+            try:
+                import yaml
+            except ImportError:
+                import subprocess
+                subprocess.check_call([sys.executable, '-m', 'pip', 'install', 'pyyaml', '-q'])
+                import yaml
+
+            CHANGED_FILES_PATH  = '/workdir/changed_files.txt'
+            CHANGED_FOLDERS_PATH = '/workdir/changed_folders.txt'
+            MATCHED_DAGS_PATH   = '/workdir/matched_dags.txt'
+            SRC_DIR             = '/workdir/src'
+            AIRFLOW_SECRET_FILE_NAME = os.environ.get('AIRFLOW_SECRET_FILE_NAME', 'dbt_airflow_variables.yml')
+            STRUCTURAL_FILES    = {'dynamic_dag_config.yml', 'dbt_project.yml', AIRFLOW_SECRET_FILE_NAME}
+
+            def read_lines(path):
+                if not os.path.exists(path):
+                    return []
+                with open(path) as f:
+                    return [l.strip() for l in f if l.strip()]
+
+            def write_matched(matched):
+                with open(MATCHED_DAGS_PATH, 'w') as f:
+                    if matched:
+                        f.write('\n'.join(matched) + '\n')
+                    else:
+                        f.write('SKIP\n')
+
+            changed_files   = read_lines(CHANGED_FILES_PATH)
+            changed_folders = [x for x in read_lines(CHANGED_FOLDERS_PATH) if x != 'README.md']
+
+            print(f'Changed folders: {changed_folders}')
+            print(f'Changed files count: {len(changed_files)}')
+
+            if not changed_folders or not changed_files:
+                print('No changed dbt folders or files detected. Writing SKIP.')
+                write_matched([])
+                sys.exit(0)
+
+            matched_dags = []
+
+            for folder in changed_folders:
+                folder_path        = os.path.join(SRC_DIR, folder)
+                manifest_path      = os.path.join(folder_path, 'target', 'manifest.json')
+                dynamic_config_path = os.path.join(folder_path, 'dynamic_dag_config.yml')
+                airflow_vars_path  = os.path.join(folder_path, AIRFLOW_SECRET_FILE_NAME)
+
+                folder_changed_files = [f for f in changed_files if f.startswith(folder + '/')]
+                if not folder_changed_files:
+                    print(f'{folder}: no changed files, skipping.')
+                    continue
+
+                print(f'Processing {folder}: {len(folder_changed_files)} changed files')
+
+                # Determine DYNAMIC_DAG flag
+                dynamic_dag = False
+                if os.path.exists(airflow_vars_path):
+                    with open(airflow_vars_path) as f:
+                        airflow_vars = yaml.safe_load(f) or {}
+                    root_key = next(iter(airflow_vars), None)
+                    if root_key:
+                        dynamic_dag = str(airflow_vars[root_key].get('DYNAMIC_DAG', 'False')).lower() == 'true'
+
+                if not dynamic_dag:
+                    print(f'{folder}: DYNAMIC_DAG=False - single DAG project, always include.')
+                    matched_dags.append(f'{folder}:__single__')
+                    continue
+
+                if not os.path.exists(dynamic_config_path):
+                    print(f'WARNING: {folder}: DYNAMIC_DAG=True but dynamic_dag_config.yml not found. Skipping.')
+                    continue
+
+                with open(dynamic_config_path) as f:
+                    dynamic_config = yaml.safe_load(f) or {}
+                all_dag_names = list((dynamic_config.get('dags') or {}).keys())
+
+                # Structural file change -> full run for this project
+                changed_rel = {os.path.relpath(cf, folder) for cf in folder_changed_files}
+                if any(b in STRUCTURAL_FILES for b in changed_rel):
+                    print(f'{folder}: structural file changed - triggering full E2E for all {len(all_dag_names)} DAGs.')
+                    for dag_name in all_dag_names:
+                        matched_dags.append(f'{folder}:{dag_name}')
+                    continue
+
+                # Load manifest.json (committed in PR branch)
+                if not os.path.exists(manifest_path):
+                    print(f'WARNING: {folder}: manifest.json not found - falling back to full run.')
+                    for dag_name in all_dag_names:
+                        matched_dags.append(f'{folder}:{dag_name}')
+                    continue
+
+                print(f'{folder}: loading manifest...')
+                with open(manifest_path) as f:
+                    manifest = json.load(f)
+
+                nodes  = manifest.get('nodes', {})
+                macros = manifest.get('macros', {})
+
+                # Build lookup maps
+                file_to_tags         = {}   # rel_path -> [tags]   (models/seeds/snapshots)
+                node_id_to_tags      = {}   # unique_id -> [tags]
+                macro_to_dep_nodes   = {}   # macro unique_id -> [node unique_ids]
+                macro_file_to_id     = {}   # rel_path -> macro unique_id
+                test_file_to_node_ids = {}  # rel_path -> [node unique_ids]
+
+                for node_id, node in nodes.items():
+                    rel_path = node.get('original_file_path', '')
+                    tags     = node.get('tags', [])
+                    rtype    = node.get('resource_type', '')
+                    node_id_to_tags[node_id] = tags
+
+                    if rtype in ('model', 'seed', 'snapshot'):
+                        file_to_tags[rel_path] = tags
+                    elif rtype == 'test':
+                        dep_nodes = node.get('depends_on', {}).get('nodes', [])
+                        test_file_to_node_ids.setdefault(rel_path, []).extend(dep_nodes)
+
+                    for macro_id in node.get('depends_on', {}).get('macros', []):
+                        macro_to_dep_nodes.setdefault(macro_id, []).append(node_id)
+
+                for macro_id, macro in macros.items():
+                    rel_path = macro.get('original_file_path', '')
+                    if rel_path:
+                        macro_file_to_id[rel_path] = macro_id
+
+                # Resolve tags from all changed files in this folder
+                collected_tags = set()
+                for full_path in folder_changed_files:
+                    rel_path = os.path.relpath(full_path, folder)
+                    if rel_path in file_to_tags:
+                        collected_tags.update(file_to_tags[rel_path])
+                    elif rel_path in macro_file_to_id:
+                        macro_id = macro_file_to_id[rel_path]
+                        for dep_node_id in macro_to_dep_nodes.get(macro_id, []):
+                            collected_tags.update(node_id_to_tags.get(dep_node_id, []))
+                    elif rel_path in test_file_to_node_ids:
+                        for dep_node_id in test_file_to_node_ids[rel_path]:
+                            collected_tags.update(node_id_to_tags.get(dep_node_id, []))
+                    else:
+                        print(f'  {rel_path}: not in manifest index, skipping')
+
+                print(f'{folder}: collected tags -> {sorted(collected_tags)}')
+
+                if not collected_tags:
+                    print(f'{folder}: no tags resolved - skipping all DAGs for this project.')
+                    continue
+
+                # Match collected tags against each DAG's DBT_TAGS
+                for dag_name, dag_config in (dynamic_config.get('dags') or {}).items():
+                    dag_tags     = set(dag_config.get('DBT_TAGS') or [])
+                    intersection = dag_tags & collected_tags
+                    if intersection:
+                        print(f'  MATCH: {folder}:{dag_name} (matched tags: {sorted(intersection)})')
+                        matched_dags.append(f'{folder}:{dag_name}')
+                    else:
+                        print(f'  SKIP:  {folder}:{dag_name} (no overlap with {sorted(dag_tags)})')
+
+            if matched_dags:
+                print(f'\nTotal matched DAGs: {len(matched_dags)}')
+                for m in matched_dags:
+                    print(f'  -> {m}')
+                write_matched(matched_dags)
+            else:
+                print('\nNo DAGs matched any changed tags. Writing SKIP.')
+                write_matched([])
+            PYEOF
+
+            echo "==========================================="
+            echo "📋 [CONFIG] matched_dags.txt contents:"
+            cat /workdir/matched_dags.txt
+            echo "==========================================="
+            echo "✅ [SUCCESS] Tag-based change detection completed"
+        env:
+          - name: AIRFLOW_SECRET_FILE_NAME
+            valueFrom:
+              secretKeyRef:
+                name: fastbi-argo-workflows-secrets
+                key: AIRFLOW_SECRET_FILE_NAME
         resources: {}
         volumeMounts:
           - name: workdir
@@ -970,7 +1193,24 @@ spec:
               if [ -d "$folder" ]; then
                 echo "⚙️ [PROCESS] Collecting Variables from $folder"
                 cd "$folder"
-                
+
+                # Tag-based change detection: check if this folder/DAGs should be processed
+                if [ -f "/workdir/matched_dags.txt" ]; then
+                  if grep -q "^SKIP$" "/workdir/matched_dags.txt"; then
+                    echo "⏭️ [SKIP] No dbt tag changes detected. Skipping E2E variable import."
+                    break
+                  fi
+                  ALLOWED_DAGS=()
+                  mapfile -t ALLOWED_DAGS < <(grep "^${folder}:" "/workdir/matched_dags.txt" | cut -d':' -f2)
+                  if [ ${#ALLOWED_DAGS[@]} -eq 0 ]; then
+                    echo "⏭️ [SKIP] Folder '$folder' has no tag-matched DAGs, skipping"
+                    continue
+                  fi
+                  echo "🔍 [CHECK] Tag-matched DAGs for ${folder}: ${ALLOWED_DAGS[*]}"
+                else
+                  ALLOWED_DAGS=()
+                fi
+
                 # Set warehouse credentials
                 echo "🔍 [CHECK] Validating data warehouse credentials..."
                 
@@ -1305,6 +1545,14 @@ spec:
                       if [ -z "$dag_name_from_list" ]; then
                         echo "⚠️ [WARNING] Skipping empty DAG name found in the list from config"
                         continue
+                      fi
+
+                      # Tag-based filtering: skip DAGs not in the matched list
+                      if [ ${#ALLOWED_DAGS[@]} -gt 0 ]; then
+                        if ! printf '%s\n' "${ALLOWED_DAGS[@]}" | grep -qx "$dag_name_from_list"; then
+                          echo "⏭️ [SKIP] DAG '$dag_name_from_list' not in tag-matched list, skipping"
+                          continue
+                        fi
                       fi
 
                       echo "⚙️ [PROCESS] Processing DAG configuration for: $dag_name_from_list"
@@ -2303,9 +2551,22 @@ spec:
                 echo "==========================================="
                 echo "⚙️ [PROCESS] Compiling Data-Orchestrator DAG in directory: $folder"
                 echo "==========================================="
-                
+
                 cd "$folder"
-                
+
+                # Tag-based change detection: check if this folder/DAGs should be processed
+                if [ -f "/workdir/matched_dags.txt" ]; then
+                  if grep -q "^SKIP$" "/workdir/matched_dags.txt"; then
+                    echo "⏭️ [SKIP] No dbt tag changes detected. Skipping DAG compilation."
+                    break
+                  fi
+                  _folder_match_count=$(grep -c "^${folder}:" "/workdir/matched_dags.txt" || true)
+                  if [ "$_folder_match_count" -eq 0 ]; then
+                    echo "⏭️ [SKIP] Folder '$folder' has no tag-matched DAGs, skipping compilation"
+                    continue
+                  fi
+                fi
+
                 # Initialize an array to track created DAG files for this folder
                 created_dag_files=()
                 
@@ -2941,6 +3202,12 @@ spec:
             # ===========================================
             echo "🚀 [INFO] Starting main processing loop for changed folders"
 
+            # Tag-based change detection: skip trigger if no DAGs matched
+            if [ -f "/workdir/matched_dags.txt" ] && grep -q "^SKIP$" "/workdir/matched_dags.txt"; then
+              echo "⏭️ [SKIP] No dbt tag changes detected. Skipping DAG trigger."
+              exit 0
+            fi
+
             while read folder; do
               if [ -d "$folder" ]; then
                 echo "=========================================="
@@ -3338,6 +3605,12 @@ spec:
             # ===========================================
             # Main Processing Loop
             # ===========================================
+
+            # Tag-based change detection: skip status check if no DAGs were triggered
+            if [ -f "/workdir/matched_dags.txt" ] && grep -q "^SKIP$" "/workdir/matched_dags.txt"; then
+              echo "⏭️ [SKIP] No dbt tag changes detected. Skipping DAG status check."
+              exit 0
+            fi
 
             while read folder; do
               if [ -d "$folder" ]; then
@@ -5277,7 +5550,7 @@ spec:
       - name: dbt_workflow_core_image_name
         value: dbt-workflow-core
       - name: dbt_workflow_core_image_tag
-        value: v1.0.3
+        value: v1.1.0
       - name: repo_url
       - name: revision
       - name: branch
