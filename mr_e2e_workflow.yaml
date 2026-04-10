@@ -5680,7 +5680,7 @@ spec:
       - name: dbt_workflow_core_image_name
         value: dbt-workflow-core
       - name: dbt_workflow_core_image_tag
-        value: v1.1.0
+        value: v1.1.1
       - name: repo_url
       - name: revision
       - name: branch
