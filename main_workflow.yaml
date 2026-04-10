@@ -1080,24 +1080,6 @@ spec:
                 name: fastbi-argo-workflows-secrets
                 key: DATAHUB_GMS_TOKEN
                 optional: true
-          - name: GCP_LOCATION
-            valueFrom:
-              secretKeyRef:
-                name: fastbi-argo-workflows-secrets
-                key: GCP_LOCATION
-                optional: true
-          - name: GCP_LOCATION
-            valueFrom:
-              secretKeyRef:
-                name: fastbi-argo-workflows-secrets
-                key: GCP_LOCATION
-                optional: true
-          - name: COMPOSER_ENVIRONMENT_NAME
-            valueFrom:
-              secretKeyRef:
-                name: fastbi-argo-workflows-secrets
-                key: COMPOSER_ENVIRONMENT_NAME
-                optional: true
           # Redshift secrets
           - name: REDSHIFT_HOST
             valueFrom:
