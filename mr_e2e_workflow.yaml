@@ -112,22 +112,14 @@ spec:
                   value: '{{inputs.parameters.ci_job_id}}'
                 - name: target_branch
                   value: '{{inputs.parameters.target_branch}}'
-        - - name: data-model-e2e-dag-run-trigger
-            template: data-model-e2e-dag-run-trigger
+        - - name: data-model-e2e-dag-run-and-status
+            template: data-model-e2e-dag-run-and-status
             arguments:
               parameters:
                 - name: branch
                   value: '{{inputs.parameters.branch}}'
                 - name: commit_short_sha
                   value: '{{inputs.parameters.commit_short_sha}}'
-        - - name: data-model-e2e-dag-status-check
-            template: data-model-e2e-dag-status-check
-            arguments:
-              parameters:
-                - name: branch
-                  value: '{{inputs.parameters.branch}}'
-                - name: dag_run_id
-                  value: '{{steps.data-model-e2e-dag-run-trigger.outputs.parameters.dag_run_id}}'
             continueOn:
               failed: true
         - - name: validating-da-dependencies-e2e
@@ -156,7 +148,7 @@ spec:
                   value: '{{inputs.parameters.branch}}'
                 - name: commit_short_sha
                   value: '{{inputs.parameters.commit_short_sha}}'
-            when: "{{steps.data-model-e2e-dag-status-check.status}} == Succeeded"
+            when: "{{steps.data-model-e2e-dag-run-and-status.status}} == Succeeded"
           - name: data-model-e2e-data-orchestration-cleanup
             template: data-model-e2e-data-orchestration-cleanup
             arguments:
@@ -165,7 +157,7 @@ spec:
                   value: '{{inputs.parameters.branch}}'
                 - name: commit_short_sha
                   value: '{{inputs.parameters.commit_short_sha}}'
-            when: "{{steps.data-model-e2e-dag-status-check.status}} == Succeeded"
+            when: "{{steps.data-model-e2e-dag-run-and-status.status}} == Succeeded"
         - - name: k8s-pvc-cleanup
             template: k8s-pvc-cleanup
             arguments: {}
@@ -1389,7 +1381,7 @@ spec:
                   echo "⚙️ [PROCESS] Updating DAG_TAG..."
                   root_key=$(yq -r 'keys | .[0]' "$AIRFLOW_SECRET_FILE_NAME")
                   if [ "$root_key" != "null" ] && [ -n "$root_key" ]; then
-                    yq -y ".\"${root_key}\".DAG_TAG = [\"e2e\", \"review\"]" "$AIRFLOW_SECRET_FILE_NAME" > "$AIRFLOW_SECRET_FILE_NAME.tmp" && mv "$AIRFLOW_SECRET_FILE_NAME.tmp" "$AIRFLOW_SECRET_FILE_NAME"
+                    yq -y ".\"${root_key}\".DAG_TAG = ((.\"${root_key}\".DAG_TAG // []) + [\"e2e\", \"review\"]) | unique" "$AIRFLOW_SECRET_FILE_NAME" > "$AIRFLOW_SECRET_FILE_NAME.tmp" && mv "$AIRFLOW_SECRET_FILE_NAME.tmp" "$AIRFLOW_SECRET_FILE_NAME"
                   else
                     echo "❌ [ERROR] Failed to extract root key from $AIRFLOW_SECRET_FILE_NAME"
                   fi
@@ -1422,6 +1414,15 @@ spec:
                     echo "📋 [CONFIG] AIRBYTE_REPLICATION_FLAG: is empty - not need to add/update variable"
                   else
                     sed -i "s/AIRBYTE_REPLICATION_FLAG:.*/AIRBYTE_REPLICATION_FLAG: 'False'/" "$AIRFLOW_SECRET_FILE_NAME"
+                  fi
+
+                  echo "⚙️ [PROCESS] Updating USE_CONTROLLER..."
+                  use_controller=$(grep 'USE_CONTROLLER:' "$AIRFLOW_SECRET_FILE_NAME" | tail -n1 | awk '{print $2}' | tr -d "'" ) || true
+                  if [ -z "$use_controller" ]; then
+                    echo "📋 [CONFIG] USE_CONTROLLER: is empty - adding variable"
+                    sed -i "$ a\  USE_CONTROLLER: 'False'" $AIRFLOW_SECRET_FILE_NAME
+                  else
+                    sed -i "s/USE_CONTROLLER:.*/USE_CONTROLLER: 'False'/" "$AIRFLOW_SECRET_FILE_NAME"
                   fi
 
                   echo "⚙️ [PROCESS] Updating DBT_SOURCE..."
@@ -1598,7 +1599,8 @@ spec:
                             .dags.\"${dag_name}\".AIRBYTE_REPLICATION_FLAG = \"False\" | \
                             .dags.\"${dag_name}\".DBT_SOURCE = \"False\" | \
                             .dags.\"${dag_name}\".DAG_SCHEDULE_INTERVAL = \"$cron_date\" | \
-                            .dags.\"${dag_name}\".DATAHUB_ENABLED = \"False\"" "$DYNAMIC_AIRFLOW_SECRET_FILE_NAME" > "$temp_file"
+                            .dags.\"${dag_name}\".DATAHUB_ENABLED = \"False\" | \
+                            .dags.\"${dag_name}\".USE_CONTROLLER = \"False\"" "$DYNAMIC_AIRFLOW_SECRET_FILE_NAME" > "$temp_file"
                       mv "$temp_file" "$DYNAMIC_AIRFLOW_SECRET_FILE_NAME"
                     done
                     
@@ -1694,6 +1696,10 @@ spec:
                       # Overwrite DAG_ID and MANIFEST_NAME
                       yq -y ".\"${new_root_key}\".DAG_ID = \"${DAG_OPERATOR}_operator_${DBT_PROJECT_NAME}_${dag_name_from_list}_${branch_name}\" | \
                         .\"${new_root_key}\".MANIFEST_NAME = \"${DBT_PROJECT_NAME}_manifest_${branch_name}\"" \
+                        "$individual_vars_file" > "${individual_vars_file}.tmp" && mv "${individual_vars_file}.tmp" "$individual_vars_file"
+
+                      # Append e2e tags so users can filter all e2e DAGs in Airflow
+                      yq -y ".\"${new_root_key}\".DAG_TAG = ((.\"${new_root_key}\".DAG_TAG // []) + [\"e2e\", \"review\"]) | unique" \
                         "$individual_vars_file" > "${individual_vars_file}.tmp" && mv "${individual_vars_file}.tmp" "$individual_vars_file"
                       
                       echo "✅ [SUCCESS] Generated variables file for $individual_vars_file"
@@ -3166,422 +3172,11 @@ spec:
             mountPath: /secrets
           - name: ssh-keys
             mountPath: /root/.ssh/
-    - name: data-model-e2e-dag-run-trigger
+    - name: data-model-e2e-dag-run-and-status
       inputs:
         parameters:
           - name: branch
           - name: commit_short_sha
-      outputs:
-        parameters:
-          - name: dag_run_id
-            valueFrom:
-              path: /workdir/dag_run_id.env
-      metadata: {}
-      container:
-        name: ''
-        image: '{{workflow.parameters.docker_image_repository_hub}}/{{workflow.parameters.docker_image_repository}}/{{workflow.parameters.data_orchestrator_core_image_name}}:{{workflow.parameters.data_orchestrator_core_image_tag}}'
-        command:
-          - bash
-          - '-c'
-        args:
-          - |
-            #!/bin/bash
-            # Exit on error, treat unset variables as errors, and return value of pipeline is the status of the last command
-
-
-            # ===========================================
-            # E2E Data-Pipeline DAG Trigger Script
-            # ===========================================
-            # This script is used to trigger the E2E Data-Pipeline DAGs for the DBT Project.
-            # It is used in the Argo Workflow to trigger the DAGs for the E2E Test Run.
-            # ===========================================
-
-            echo "🚀 [INFO] Starting DBT Project DAG E2E Data-Pipeline Trigger procedure"
-            echo "=========================================="
-
-            # Navigate to source directory
-            cd /workdir/src || { echo "❌ [ERROR] Failed to navigate to /workdir/src"; exit 1; }
-
-            # ===========================================
-            # DAG RUN ID GENERATION
-            # ===========================================
-            echo "⚙️ [PROCESS] Generating unique DAG run ID"
-            touch /workdir/dag_run_id.env || { echo "❌ [ERROR] Failed to create dag_run_id.env file"; exit 1; }
-
-            # Generate unique dag_run_id
-            uuid=$(uuidgen) || { echo "❌ [ERROR] Failed to generate UUID"; exit 1; }
-            uuid=${uuid/-/_0x}
-            uuid=${uuid%_*-*-*-*}
-            export "dag_run_id=e2e_test_run_{{ inputs.parameters.commit_short_sha }}_${uuid}" 
-            echo "dag_run_id=$dag_run_id" > ../dag_run_id.env || { echo "❌ [ERROR] Failed to write dag_run_id to file"; exit 1; }
-            echo "✅ [SUCCESS] DAG run ID generated: ${dag_run_id:0:20}..."
-
-            # ===========================================
-            # PRE-PROCESSING BRANCH DAGS
-            # ===========================================
-            echo "⚙️ [PROCESS] Pre-processing branch: {{inputs.parameters.branch}} DAGs"
-            python /usr/app/tsb-data-orchestrator-core/airflow_reserialize_dag.py 2>&1 || echo "⚠️ [WARNING] DAG reserialization completed with warnings"
-
-            # ===========================================
-            # DAG TRIGGER FUNCTIONS
-            # ===========================================
-
-            # Function to trigger DAGs
-            trigger_dags() {
-              local platform="$1"
-              local dag_id="$2"
-              local branch_name="{{inputs.parameters.branch}}"
-              
-              echo "⚙️ [PROCESS] Triggering DAG: $dag_id"
-              
-              if [ "${platform,,}" == "composer" ]; then
-                echo "📋 [CONFIG] Platform: Composer"
-                echo "🔍 [CHECK] Validating Composer environment variables"
-                
-                if [[ -z $AIRFLOW_URL || -z $PLATFORM || -z $project_id || -z $location || -z $composer_environment_name || -z $service_account_email ]]; then
-                  echo "❌ [ERROR] One or more Composer environment variables are undefined"
-                  return 1
-                else  
-                  echo "✅ [SUCCESS] All Composer variables are defined"
-                  echo "⚙️ [PROCESS] Triggering Airflow DAG: $dag_id"
-                  export DAG_ID="$dag_id"
-                  python /usr/app/tsb-data-orchestrator-core/run_dag_airflow_bauth.op.py 2>&1 | tee -a /workdir/triggering_dag_procedure.log || echo "⚠️ [WARNING] DAG trigger completed with warnings"
-                fi 
-              elif [ "${platform,,}" == "airflow" ]; then
-                echo "📋 [CONFIG] Platform: Airflow"
-                echo "🔍 [CHECK] Validating Airflow environment variables"
-                
-                if [[ -z $AIRFLOW_URL || -z $PLATFORM || -z $AIRFLOW_USER || -z $AIRFLOW_PASSWORD ]]; then
-                  echo "❌ [ERROR] One or more Airflow environment variables are undefined"
-                  return 1
-                else  
-                  echo "✅ [SUCCESS] All Airflow variables are defined"
-                  echo "⚙️ [PROCESS] Pre-processing DAG"
-                  export DAG_ID="$dag_id"
-                  echo "⚙️ [PROCESS] Triggering Airflow DAG: $dag_id"
-                  python /usr/app/tsb-data-orchestrator-core/run_dag_airflow_bauth.op.py 2>&1 | tee -a /workdir/triggering_dag_procedure.log || echo "⚠️ [WARNING] DAG trigger completed with warnings"
-                fi
-              else
-                echo "❌ [ERROR] Unknown platform: $platform"
-                return 1
-              fi
-            }
-
-            # Function to process DAGs for a project
-            process_project_dags() {
-              local project_name="$1"
-              local platform="$2"
-              
-              echo "📋 [CONFIG] Reading DAG configurations from airflow_dags.yaml"
-              
-              # Get all DAG configurations for the current project
-              local dag_configs=$(yq -r '.dags[] | select(.project == "'$project_name'") | .dag_id' /workdir/airflow_dags.yaml) || { echo "❌ [ERROR] Failed to read DAG configurations"; return 1; }
-              
-              if [ -z "$dag_configs" ]; then
-                echo "❌ [ERROR] No DAG configurations found for project $project_name in airflow_dags.yaml"
-                return 1
-              fi
-              
-              echo "✅ [SUCCESS] Found DAG configurations for project $project_name"
-              
-              # Process each DAG configuration
-              while IFS= read -r dag_id; do
-                if [ -n "$dag_id" ]; then
-                  echo "⚙️ [PROCESS] Processing DAG: $dag_id"
-                  trigger_dags "$platform" "$dag_id"
-                fi
-              done <<< "$dag_configs"
-            }
-
-            # ===========================================
-            # MAIN PROCESSING LOOP
-            # ===========================================
-            echo "🚀 [INFO] Starting main processing loop for changed folders"
-
-            # Tag-based change detection: skip trigger if no DAGs matched
-            if [ -f "/workdir/matched_dags.txt" ] && grep -q "^SKIP$" "/workdir/matched_dags.txt"; then
-              echo "⏭️ [SKIP] No dbt tag changes detected. Skipping DAG trigger."
-              exit 0
-            fi
-
-            while read folder; do
-              if [ -d "$folder" ]; then
-                echo "=========================================="
-                echo "⚙️ [PROCESS] Processing directory: $folder"
-                echo "📋 [CONFIG] Branch: {{inputs.parameters.branch}}"
-                cd "$folder" || { echo "❌ [ERROR] Failed to navigate to directory: $folder"; exit 1; }
-                
-                # ===========================================
-                # WAREHOUSE CREDENTIALS SETUP
-                # ===========================================
-                echo "🔍 [CHECK] Setting up warehouse credentials for platform: ${DATA_WAREHOUSE_PLATFORM,,}"
-                
-                if [[ "${DATA_WAREHOUSE_PLATFORM,,}" == "bigquery" ]]; then
-                  if [[ -z "$GCP_SA_SECRET" ]]; then
-                    echo "❌ [ERROR] Google BigQuery credentials are missing: Service Account JSON not provided"
-                    exit 1
-                  else
-                    if [[ -z "$GOOGLE_APPLICATION_CREDENTIALS" ]]; then
-                      echo "⚙️ [PROCESS] Setting up Google Cloud authentication"
-                      echo "$GCP_SA_SECRET" | base64 --decode > /secrets/sa.json || { echo "❌ [ERROR] Failed to decode service account secret"; exit 1; }
-                      gcloud auth activate-service-account --key-file /secrets/sa.json || { echo "❌ [ERROR] Failed to activate service account"; exit 1; }
-                      gcloud config set project $GCP_PROJECT_NAME || { echo "❌ [ERROR] Failed to set GCP project"; exit 1; }
-                      export GOOGLE_APPLICATION_CREDENTIALS="/secrets/sa.json"
-                      echo "✅ [SUCCESS] Google Cloud authentication configured"
-                    fi
-                  fi
-                fi
-                
-                if [[ "${DATA_WAREHOUSE_PLATFORM,,}" == "snowflake" ]]; then
-                  if [[ -z "$SNOWFLAKE_PRIVATE_KEY" || -z "$SNOWFLAKE_PASSPHRASE" ]]; then
-                    echo "❌ [ERROR] Snowflake credentials are missing: Private Key and Passphrase not provided"
-                    exit 1
-                  else
-                    if [[ -z "$SNOWSQL_PRIVATE_KEY_PASSPHRASE" ]]; then
-                      echo "⚙️ [PROCESS] Setting up Snowflake authentication"
-                      mkdir -p /snowsql/secrets/ || { echo "❌ [ERROR] Failed to create Snowflake secrets directory"; exit 1; }
-                      echo "$SNOWFLAKE_PRIVATE_KEY" > /snowsql/secrets/rsa_key.p8 || { echo "❌ [ERROR] Failed to write Snowflake private key"; exit 1; }
-                      chmod 600 /snowsql/secrets/rsa_key.p8 || { echo "❌ [ERROR] Failed to set Snowflake key permissions"; exit 1; }
-                      export SNOWSQL_PRIVATE_KEY_PASSPHRASE=$SNOWFLAKE_PASSPHRASE
-                      echo "✅ [SUCCESS] Snowflake authentication configured"
-                    fi
-                  fi
-                fi
-                
-                if [[ "${DATA_WAREHOUSE_PLATFORM,,}" == "redshift" ]]; then
-                  if [[ -z "$REDSHIFT_PASSWORD" || -z "$REDSHIFT_USER" || -z "$REDSHIFT_HOST" || -z "$REDSHIFT_DATABASE" || -z "$REDSHIFT_PORT" ]]; then
-                    echo "❌ [ERROR] Redshift credentials are missing: username and/or password not provided"
-                    exit 1
-                  else
-                    echo "✅ [SUCCESS] Redshift credentials validated"
-                  fi
-                fi
-                
-                if [[ "${DATA_WAREHOUSE_PLATFORM,,}" == "fabric" ]]; then
-                  if [[ -z "$FABRIC_SERVER" || -z "$FABRIC_DATABASE" || -z "$FABRIC_PORT" || -z "$FABRIC_USER" || -z "$FABRIC_PASSWORD" || -z "$FABRIC_AUTHENTICATION" ]]; then
-                    echo "❌ [ERROR] Fabric credentials are missing: one or more required parameters not provided"
-                    exit 1
-                  else
-                    echo "✅ [SUCCESS] Fabric credentials validated"
-                  fi
-                fi
-                
-                # ===========================================
-                # AIRFLOW VARIABLES IMPORT
-                # ===========================================
-                echo "🔍 [CHECK] Validating Data-Orchestrator environment variables"
-                
-                if [[ -z $AIRFLOW_SECRET_FILE_NAME ]]; then
-                  echo "❌ [ERROR] AIRFLOW_SECRET_FILE_NAME is undefined"
-                  exit 1
-                else
-                  echo "✅ [SUCCESS] All required variables are defined"
-                  echo "⚙️ [PROCESS] Importing variables from Airflow secret file"
-                  
-                  export PLATFORM=$(grep -E '^[[:space:]]*PLATFORM:[[:space:]]*' $AIRFLOW_SECRET_FILE_NAME | awk '{print $2}' | tr -d "'" ) || { echo "❌ [ERROR] Failed to extract PLATFORM from secret file"; exit 1; }
-                  export DBT_PROJECT_NAME=$(grep 'DBT_PROJECT_NAME:' $AIRFLOW_SECRET_FILE_NAME | tail -n1 | awk '{print $2}' | tr -d "'" ) || { echo "❌ [ERROR] Failed to extract DBT_PROJECT_NAME from secret file"; exit 1; }
-                  
-                  echo "📋 [CONFIG] Platform: $PLATFORM"
-                  echo "📋 [CONFIG] DBT Project: $DBT_PROJECT_NAME"
-                fi 
-
-                # Create log file for DAG triggering
-                touch /workdir/triggering_dag_procedure.log || { echo "❌ [ERROR] Failed to create triggering log file"; exit 1; }
-
-                # Process DAGs for the current project
-                echo "⚙️ [PROCESS] Processing DAGs for project: $DBT_PROJECT_NAME"
-                process_project_dags "$DBT_PROJECT_NAME" "$PLATFORM"
-                
-                cd .. || { echo "❌ [ERROR] Failed to return to parent directory"; exit 1; }
-              else
-                echo "📋 [CONFIG] Working on root - skipping directory processing"
-              fi
-            done < /workdir/changed_folders.txt
-
-            # ===========================================
-            # ERROR ANALYSIS AND COMPLETION
-            # ===========================================
-            echo "=========================================="
-            echo "🔍 [CHECK] Analyzing DAG trigger procedure results"
-
-            error_found=0
-
-            if [ ! -f "/workdir/triggering_dag_procedure.log" ]; then
-              echo "✅ [SUCCESS] No changes detected - DAG trigger log file does not exist. Proceeding successfully."
-            else
-              echo "⚙️ [PROCESS] Checking trigger procedure log for errors"
-              
-              while read -r line; do
-                if echo "$line" | grep -Ei "fail|error|forbidden|denied" > /dev/null; then
-                  echo "❌ [ERROR] Error found in E2E Test DBT Project DAG trigger procedure log: $line"
-                  error_found=1
-                fi
-              done < /workdir/triggering_dag_procedure.log
-
-              if [ $error_found -eq 1 ]; then
-                echo "❌ [ERROR] E2E Test DBT Project DAG trigger procedure has failed. Please check the logs for details."
-                exit 1
-              else
-                echo "✅ [SUCCESS] E2E Test DBT Project DAG trigger procedure completed successfully"
-              fi
-            fi
-
-            echo "=========================================="
-            echo "🎉 [SUCCESS] DBT Project DAG E2E Data-Pipeline Trigger procedure completed"
-            echo "=========================================="
-        env:
-          - name: DBT_TARGET
-            value: "test"
-          - name: DATA_WAREHOUSE_PLATFORM
-            valueFrom:
-              secretKeyRef:
-                name: fastbi-argo-workflows-secrets
-                key: DATA_WAREHOUSE_PLATFORM
-          - name: AIRFLOW_SECRET_FILE_NAME
-            valueFrom:
-              secretKeyRef:
-                name: fastbi-argo-workflows-secrets
-                key: AIRFLOW_SECRET_FILE_NAME
-          - name: DAG_REPO_PUSH
-            valueFrom:
-              secretKeyRef:
-                name: fastbi-argo-workflows-secrets
-                key: DAG_REPO_PUSH
-          - name: GIT_USER_EMAIL
-            valueFrom:
-              secretKeyRef:
-                name: fastbi-argo-workflows-secrets
-                key: GIT_USER_EMAIL
-          - name: GIT_USER_NAME
-            valueFrom:
-              secretKeyRef:
-                name: fastbi-argo-workflows-secrets
-                key: CUSTOMER
-          - name: AIRFLOW_URL
-            valueFrom:
-              secretKeyRef:
-                name: fastbi-argo-workflows-secrets
-                key: AIRFLOW_URL
-          - name: AIRFLOW_USER
-            valueFrom:
-              secretKeyRef:
-                name: fastbi-argo-workflows-secrets
-                key: AIRFLOW_USER
-          - name: AIRFLOW_PASSWORD
-            valueFrom:
-              secretKeyRef:
-                name: fastbi-argo-workflows-secrets
-                key: AIRFLOW_PASSWORD
-          - name: GCP_PROJECT_NAME
-            valueFrom:
-              secretKeyRef:
-                name: fastbi-argo-workflows-secrets
-                key: GCP_PROJECT_NAME
-                optional: true
-          - name: GCP_SA_SECRET
-            valueFrom:
-              secretKeyRef:
-                name: fastbi-argo-workflows-secrets
-                key: GCP_SA_SECRET
-                optional: true
-          - name: GCP_BUCKET_NAME
-            valueFrom:
-              secretKeyRef:
-                name: fastbi-argo-workflows-secrets
-                key: GCP_BUCKET_NAME
-                optional: true
-          # Redshift secrets
-          - name: REDSHIFT_HOST
-            valueFrom:
-              secretKeyRef:
-                name: fastbi-argo-workflows-secrets
-                key: REDSHIFT_HOST
-                optional: true
-          - name: REDSHIFT_DATABASE
-            valueFrom:
-              secretKeyRef:
-                name: fastbi-argo-workflows-secrets
-                key: REDSHIFT_DATABASE
-                optional: true
-          - name: REDSHIFT_PORT
-            valueFrom:
-              secretKeyRef:
-                name: fastbi-argo-workflows-secrets
-                key: REDSHIFT_PORT
-                optional: true
-          - name: REDSHIFT_USER
-            valueFrom:
-              secretKeyRef:
-                name: fastbi-argo-workflows-secrets
-                key: REDSHIFT_USER
-                optional: true
-          - name: REDSHIFT_PASSWORD
-            valueFrom:
-              secretKeyRef:
-                name: fastbi-argo-workflows-secrets
-                key: REDSHIFT_PASSWORD
-                optional: true
-          # Snowflake secrets
-          - name: SNOWFLAKE_PRIVATE_KEY
-            valueFrom:
-              secretKeyRef:
-                name: fastbi-argo-workflows-secrets
-                key: SNOWFLAKE_PRIVATE_KEY
-                optional: true
-          - name: SNOWFLAKE_PASSPHRASE
-            valueFrom:
-              secretKeyRef:
-                name: fastbi-argo-workflows-secrets
-                key: SNOWFLAKE_PASSPHRASE
-                optional: true
-          # Fabric secrets
-          - name: FABRIC_SERVER
-            valueFrom:
-              secretKeyRef:
-                name: fastbi-argo-workflows-secrets
-                key: FABRIC_SERVER
-                optional: true
-          - name: FABRIC_DATABASE
-            valueFrom:
-              secretKeyRef:
-                name: fastbi-argo-workflows-secrets
-                key: FABRIC_DATABASE
-                optional: true
-          - name: FABRIC_PORT
-            valueFrom:
-              secretKeyRef:
-                name: fastbi-argo-workflows-secrets
-                key: FABRIC_PORT
-                optional: true
-          - name: FABRIC_USER
-            valueFrom:
-              secretKeyRef:
-                name: fastbi-argo-workflows-secrets
-                key: FABRIC_USER
-                optional: true
-          - name: FABRIC_PASSWORD
-            valueFrom:
-              secretKeyRef:
-                name: fastbi-argo-workflows-secrets
-                key: FABRIC_PASSWORD
-                optional: true
-          - name: FABRIC_AUTHENTICATION
-            valueFrom:
-              secretKeyRef:
-                name: fastbi-argo-workflows-secrets
-                key: FABRIC_AUTHENTICATION
-                optional: true
-        resources: {}
-        volumeMounts:
-          - name: workdir
-            mountPath: /workdir
-          - name: gcp-sa-secret-file
-            mountPath: /secrets
-    - name: data-model-e2e-dag-status-check
-      inputs:
-        parameters:
-          - name: branch
-          - name: dag_run_id
       outputs: {}
       metadata: {}
       container:
@@ -3593,244 +3188,298 @@ spec:
         args:
           - |
             #!/bin/bash
-            # Exit on error, treat unset variables as errors, and return value of pipeline is the status of the last command
+            # ===========================================
+            # E2E Data-Pipeline DAG Run and Status Script
+            # ===========================================
+            # Combines DAG triggering and status checking into one step.
+            # For dynamic DAGs: executes 3 ordered waves to respect dbt task dependencies:
+            #   Wave 1 — DBT_SEED=True  (seed DAGs run first)
+            #   Wave 2 — DBT_SEED=False AND DBT_SNAPSHOT=False  (model DAGs)
+            #   Wave 3 — DBT_SNAPSHOT=True  (snapshot DAGs run last)
+            # For standalone DAGs: triggers all DAGs then checks status.
+            # ===========================================
 
+            echo "🚀 [INFO] Starting DBT Project DAG E2E Run and Status procedure"
+            echo "=========================================="
+
+            # Navigate to source directory
+            cd /workdir/src || { echo "❌ [ERROR] Failed to navigate to /workdir/src"; exit 1; }
 
             # ===========================================
-            # E2E Data-Pipeline DAG Status Check Script
+            # DAG RUN ID GENERATION
             # ===========================================
-            # This script checks the status of E2E Data-Pipeline DAGs for the DBT Project
-            # Used in Argo Workflow for E2E Test Run validation
+            echo "⚙️ [PROCESS] Generating unique DAG run ID"
+            touch /workdir/dag_run_id.env || { echo "❌ [ERROR] Failed to create dag_run_id.env file"; exit 1; }
+            uuid=$(uuidgen) || { echo "❌ [ERROR] Failed to generate UUID"; exit 1; }
+            uuid=${uuid/-/_0x}
+            uuid=${uuid%_*-*-*-*}
+            export dag_run_id="e2e_test_run_{{inputs.parameters.commit_short_sha}}_${uuid}"
+            echo "dag_run_id=$dag_run_id" > /workdir/dag_run_id.env || { echo "❌ [ERROR] Failed to write dag_run_id to file"; exit 1; }
+            echo "✅ [SUCCESS] DAG run ID generated: ${dag_run_id:0:40}..."
+
+            # ===========================================
+            # PRE-PROCESSING BRANCH DAGS
+            # ===========================================
+            echo "⚙️ [PROCESS] Pre-processing branch: {{inputs.parameters.branch}} DAGs"
+            python /usr/app/tsb-data-orchestrator-core/airflow_reserialize_dag.py 2>&1 || echo "⚠️ [WARNING] DAG reserialization completed with warnings"
+
+            # ===========================================
+            # SHARED HELPER FUNCTIONS
             # ===========================================
 
-            echo "🚀 [INFO] Starting DBT Project DAG E2E Data-Pipeline Test procedure"
-            cd /workdir/src
-
-            # ===========================================
-            # DAG Run ID Configuration
-            # ===========================================
-            echo "📋 [CONFIG] Configuring DAG run ID"
-
-            # Check if dag_run_id environment variable is already set
-            if [ -z "$dag_run_id" ]; then
-              echo "⚙️ [PROCESS] dag_run_id not set, reading from ../dag_run_id.env file"
-              
-              # Check if the file exists and read the value from the file
-              if [ -f "../dag_run_id.env" ]; then
-                export dag_run_id=$(grep 'dag_run_id=' ../dag_run_id.env | cut -d'=' -f2)
-                echo "✅ [SUCCESS] dag_run_id configured from file"
+            # Trigger a single DAG and capture exit code
+            trigger_one_dag() {
+              local platform="$1"
+              local dag_id="$2"
+              echo "⚙️ [PROCESS] Triggering DAG: $dag_id"
+              export DAG_ID="$dag_id"
+              if [ "${platform,,}" == "composer" ]; then
+                if [[ -z $AIRFLOW_URL || -z $project_id || -z $location || -z $composer_environment_name || -z $service_account_email ]]; then
+                  echo "❌ [ERROR] One or more Composer environment variables are undefined"
+                  return 1
+                fi
+                python /usr/app/tsb-data-orchestrator-core/run_dag_airflow_bauth.op.py 2>&1 | tee -a /workdir/triggering_dag_procedure.log
+                return ${PIPESTATUS[0]}
+              elif [ "${platform,,}" == "airflow" ]; then
+                if [[ -z $AIRFLOW_URL || -z $AIRFLOW_USER || -z $AIRFLOW_PASSWORD ]]; then
+                  echo "❌ [ERROR] One or more Airflow environment variables are undefined"
+                  return 1
+                fi
+                python /usr/app/tsb-data-orchestrator-core/run_dag_airflow_bauth.op.py 2>&1 | tee -a /workdir/triggering_dag_procedure.log
+                return ${PIPESTATUS[0]}
               else
-                echo "❌ [ERROR] dag_run_id.env file not found!"
-                exit 1
+                echo "❌ [ERROR] Unknown platform: $platform"
+                return 1
               fi
-            else
-              echo "✅ [SUCCESS] dag_run_id already configured"
-            fi
-
-            echo "🔍 [CHECK] DAG run ID validation complete"
-
-            # ===========================================
-            # DAG Status Check Functions
-            # ===========================================
-
-            # Function to check DAG status
-            check_dag_status() {
-                local platform="$1"
-                local dag_id="$2"
-                
-                echo "🔍 [CHECK] Checking status for DAG: $dag_id"
-                
-                if [ "${platform,,}" == "composer" ]; then
-                    echo "⚙️ [PROCESS] Platform: Composer"
-                    echo "🔍 [CHECK] Validating Composer environment variables"
-                    
-                    if [[ -z $AIRFLOW_URL || -z $PLATFORM || -z $project_id || -z $location || -z $composer_environment_name || -z $service_account_email ]]; then
-                        echo "❌ [ERROR] One or more Composer variables are undefined"
-                        return 1
-                    else  
-                        echo "✅ [SUCCESS] All Composer variables are defined"
-                        echo "⚙️ [PROCESS] Getting status for Airflow DAG: $dag_id"
-                        export dag_id="$dag_id"
-                        python /usr/app/tsb-data-orchestrator-core/get_dag_status_airflow_bauth.op.py 2>&1 | tee -a /workdir/status_check_dag_procedure.log || true
-                    fi 
-                elif [ "${platform,,}" == "airflow" ]; then
-                    echo "⚙️ [PROCESS] Platform: Airflow"
-                    echo "🔍 [CHECK] Validating Airflow environment variables"
-                    
-                    if [[ -z $AIRFLOW_URL || -z $PLATFORM || -z $AIRFLOW_USER || -z $AIRFLOW_PASSWORD ]]; then
-                        echo "❌ [ERROR] One or more Airflow variables are undefined"
-                        return 1
-                    else  
-                        echo "✅ [SUCCESS] All Airflow variables are defined"
-                        echo "⚙️ [PROCESS] Getting status for Airflow DAG: $dag_id"
-                        export dag_id="$dag_id"
-                        python /usr/app/tsb-data-orchestrator-core/get_dag_status_airflow_bauth.op.py 2>&1 | tee -a /workdir/status_check_dag_procedure.log || true
-                    fi
-                else
-                    echo "❌ [ERROR] Unknown platform: $platform"
-                    return 1
-                fi
             }
 
-            # Function to process DAGs for a project
-            process_project_dags() {
-                local project_name="$1"
-                local platform="$2"
-                
-                echo "📋 [CONFIG] Reading DAG configurations from airflow_dags.yaml"
-                
-                # Get all DAG configurations for the current project
-                local dag_configs=$(yq -r '.dags[] | select(.project == "'$project_name'") | .dag_id' /workdir/airflow_dags.yaml)
-                
-                if [ -z "$dag_configs" ]; then
-                    echo "❌ [ERROR] No DAG configurations found for project $project_name in airflow_dags.yaml"
-                    return 1
+            # Check status of a single DAG and capture exit code
+            check_one_dag_status() {
+              local platform="$1"
+              local dag_id="$2"
+              echo "🔍 [CHECK] Checking status for DAG: $dag_id"
+              export dag_id="$dag_id"
+              if [ "${platform,,}" == "composer" ]; then
+                if [[ -z $AIRFLOW_URL || -z $project_id || -z $location || -z $composer_environment_name || -z $service_account_email ]]; then
+                  echo "❌ [ERROR] One or more Composer environment variables are undefined"
+                  return 1
                 fi
-                
-                echo "✅ [SUCCESS] Found DAG configurations for project $project_name"
-                
-                # Process each DAG configuration
-                while IFS= read -r dag_id; do
-                    if [ -n "$dag_id" ]; then
-                        echo "⚙️ [PROCESS] Processing DAG: $dag_id"
-                        check_dag_status "$platform" "$dag_id"
-                    fi
-                done <<< "$dag_configs"
+                python /usr/app/tsb-data-orchestrator-core/get_dag_status_airflow_bauth.op.py 2>&1 | tee -a /workdir/status_check_dag_procedure.log
+                return ${PIPESTATUS[0]}
+              elif [ "${platform,,}" == "airflow" ]; then
+                if [[ -z $AIRFLOW_URL || -z $AIRFLOW_USER || -z $AIRFLOW_PASSWORD ]]; then
+                  echo "❌ [ERROR] One or more Airflow environment variables are undefined"
+                  return 1
+                fi
+                python /usr/app/tsb-data-orchestrator-core/get_dag_status_airflow_bauth.op.py 2>&1 | tee -a /workdir/status_check_dag_procedure.log
+                return ${PIPESTATUS[0]}
+              else
+                echo "❌ [ERROR] Unknown platform: $platform"
+                return 1
+              fi
+            }
+
+            # Trigger a list of DAG IDs and wait for all to succeed before returning
+            # Arguments: platform, then DAG IDs as remaining arguments
+            run_wave() {
+              local platform="$1"
+              shift
+              local wave_dags=("$@")
+
+              if [ ${#wave_dags[@]} -eq 0 ]; then
+                echo "⏭️ [SKIP] No DAGs in this wave — skipping"
+                return 0
+              fi
+
+              # Trigger all DAGs in wave
+              echo "⚙️ [PROCESS] Triggering ${#wave_dags[@]} DAG(s) in wave"
+              for dag_id in "${wave_dags[@]}"; do
+                trigger_one_dag "$platform" "$dag_id" || { echo "❌ [ERROR] Failed to trigger DAG: $dag_id"; return 1; }
+              done
+
+              # Wait for all DAGs in wave to succeed
+              echo "🔍 [CHECK] Waiting for ${#wave_dags[@]} DAG(s) in wave to succeed"
+              for dag_id in "${wave_dags[@]}"; do
+                check_one_dag_status "$platform" "$dag_id" || { echo "❌ [ERROR] DAG failed or timed out: $dag_id"; return 1; }
+              done
+
+              echo "✅ [SUCCESS] All DAGs in wave completed successfully"
+              return 0
             }
 
             # ===========================================
-            # Main Processing Loop
+            # WAREHOUSE CREDENTIALS SETUP (shared)
+            # ===========================================
+            setup_warehouse_credentials() {
+              echo "🔍 [CHECK] Setting up warehouse credentials for platform: ${DATA_WAREHOUSE_PLATFORM,,}"
+              if [[ "${DATA_WAREHOUSE_PLATFORM,,}" == "bigquery" ]]; then
+                if [[ -z "$GCP_SA_SECRET" ]]; then
+                  echo "❌ [ERROR] Google BigQuery credentials are missing"
+                  return 1
+                fi
+                if [[ -z "$GOOGLE_APPLICATION_CREDENTIALS" ]]; then
+                  echo "$GCP_SA_SECRET" | base64 --decode > /secrets/sa.json || return 1
+                  gcloud auth activate-service-account --key-file /secrets/sa.json || return 1
+                  gcloud config set project $GCP_PROJECT_NAME || return 1
+                  export GOOGLE_APPLICATION_CREDENTIALS="/secrets/sa.json"
+                  echo "✅ [SUCCESS] Google Cloud authentication configured"
+                fi
+              fi
+              if [[ "${DATA_WAREHOUSE_PLATFORM,,}" == "snowflake" ]]; then
+                if [[ -z "$SNOWFLAKE_PRIVATE_KEY" || -z "$SNOWFLAKE_PASSPHRASE" ]]; then
+                  echo "❌ [ERROR] Snowflake credentials are missing"
+                  return 1
+                fi
+                if [[ -z "$SNOWSQL_PRIVATE_KEY_PASSPHRASE" ]]; then
+                  mkdir -p /snowsql/secrets/
+                  echo "$SNOWFLAKE_PRIVATE_KEY" > /snowsql/secrets/rsa_key.p8
+                  chmod 600 /snowsql/secrets/rsa_key.p8
+                  export SNOWSQL_PRIVATE_KEY_PASSPHRASE=$SNOWFLAKE_PASSPHRASE
+                  echo "✅ [SUCCESS] Snowflake authentication configured"
+                fi
+              fi
+              if [[ "${DATA_WAREHOUSE_PLATFORM,,}" == "redshift" ]]; then
+                if [[ -z "$REDSHIFT_PASSWORD" || -z "$REDSHIFT_USER" || -z "$REDSHIFT_HOST" || -z "$REDSHIFT_DATABASE" || -z "$REDSHIFT_PORT" ]]; then
+                  echo "❌ [ERROR] Redshift credentials are missing"
+                  return 1
+                fi
+                echo "✅ [SUCCESS] Redshift credentials validated"
+              fi
+              if [[ "${DATA_WAREHOUSE_PLATFORM,,}" == "fabric" ]]; then
+                if [[ -z "$FABRIC_SERVER" || -z "$FABRIC_DATABASE" || -z "$FABRIC_PORT" || -z "$FABRIC_USER" || -z "$FABRIC_PASSWORD" || -z "$FABRIC_AUTHENTICATION" ]]; then
+                  echo "❌ [ERROR] Fabric credentials are missing"
+                  return 1
+                fi
+                echo "✅ [SUCCESS] Fabric credentials validated"
+              fi
+            }
+
+            # ===========================================
+            # MAIN PROCESSING LOOP
             # ===========================================
 
-            # Tag-based change detection: skip status check if no DAGs were triggered
+            # Tag-based change detection: skip if no DAGs matched
             if [ -f "/workdir/matched_dags.txt" ] && grep -q "^SKIP$" "/workdir/matched_dags.txt"; then
-              echo "⏭️ [SKIP] No dbt tag changes detected. Skipping DAG status check."
+              echo "⏭️ [SKIP] No dbt tag changes detected. Skipping DAG run."
               exit 0
             fi
+
+            touch /workdir/triggering_dag_procedure.log
+            touch /workdir/status_check_dag_procedure.log
 
             while read folder; do
               if [ -d "$folder" ]; then
                 echo "=========================================="
-                echo "🔍 [CHECK] Processing Data-Orchestrator in directory: $folder"
+                echo "⚙️ [PROCESS] Processing directory: $folder"
                 echo "📋 [CONFIG] Branch: {{inputs.parameters.branch}}"
-                echo "=========================================="
-                
-                cd "$folder"
-                
-                # ===========================================
-                # Data Warehouse Credentials Configuration
-                # ===========================================
-                echo "📋 [CONFIG] Configuring data warehouse credentials"
-                
-                if [[ "${DATA_WAREHOUSE_PLATFORM,,}" == "bigquery" ]]; then
-                  if [[ -z "$GCP_SA_SECRET" ]]; then
-                    echo "❌ [ERROR] Google BigQuery credentials are missing: Service Account JSON not provided"
-                    exit 1
-                  else
-                    if [[ -z "$GOOGLE_APPLICATION_CREDENTIALS" ]]; then
-                      echo "⚙️ [PROCESS] Setting up Google Cloud authentication"
-                      echo "$GCP_SA_SECRET" | base64 --decode > /secrets/sa.json
-                      gcloud auth activate-service-account --key-file /secrets/sa.json
-                      gcloud config set project $GCP_PROJECT_NAME
-                      export GOOGLE_APPLICATION_CREDENTIALS="/secrets/sa.json"
-                      echo "✅ [SUCCESS] Google Cloud authentication configured"
-                    fi
-                  fi
-                fi
-                
-                if [[ "${DATA_WAREHOUSE_PLATFORM,,}" == "snowflake" ]]; then
-                  if [[ -z "$SNOWFLAKE_PRIVATE_KEY" || -z "$SNOWFLAKE_PASSPHRASE" ]]; then
-                    echo "❌ [ERROR] Snowflake credentials are missing: Private Key and Passphrase not provided"
-                    exit 1
-                  else
-                    if [[ -z "$SNOWSQL_PRIVATE_KEY_PASSPHRASE" ]]; then
-                      echo "⚙️ [PROCESS] Setting up Snowflake authentication"
-                      mkdir -p /snowsql/secrets/
-                      echo "$SNOWFLAKE_PRIVATE_KEY" > /snowsql/secrets/rsa_key.p8
-                      chmod 600 /snowsql/secrets/rsa_key.p8
-                      export SNOWSQL_PRIVATE_KEY_PASSPHRASE=$SNOWFLAKE_PASSPHRASE
-                      echo "✅ [SUCCESS] Snowflake authentication configured"
-                    fi
-                  fi
-                fi
-                
-                if [[ "${DATA_WAREHOUSE_PLATFORM,,}" == "redshift" ]]; then
-                  if [[ -z "$REDSHIFT_PASSWORD" || -z "$REDSHIFT_USER" || -z "$REDSHIFT_HOST" || -z "$REDSHIFT_DATABASE" || -z "$REDSHIFT_PORT" ]]; then
-                    echo "❌ [ERROR] Redshift credentials are missing: username and/or password not provided"
-                    exit 1
-                  else
-                    echo "✅ [SUCCESS] Redshift credentials validated"
-                  fi
-                fi
-                
-                if [[ "${DATA_WAREHOUSE_PLATFORM,,}" == "fabric" ]]; then
-                  if [[ -z "$FABRIC_SERVER" || -z "$FABRIC_DATABASE" || -z "$FABRIC_PORT" || -z "$FABRIC_USER" || -z "$FABRIC_PASSWORD" || -z "$FABRIC_AUTHENTICATION" ]]; then
-                    echo "❌ [ERROR] Fabric credentials are missing: one or more required parameters not provided"
-                    exit 1
-                  else
-                    echo "✅ [SUCCESS] Fabric credentials validated"
-                  fi
-                fi
-                
-                # ===========================================
-                # Data-Orchestrator Environment Configuration
-                # ===========================================
-                echo "🔍 [CHECK] Validating Data-Orchestrator environment variables"
-                
+                cd "$folder" || { echo "❌ [ERROR] Failed to navigate to directory: $folder"; exit 1; }
+
+                setup_warehouse_credentials || exit 1
+
                 if [[ -z $AIRFLOW_SECRET_FILE_NAME ]]; then
                   echo "❌ [ERROR] AIRFLOW_SECRET_FILE_NAME is undefined"
                   exit 1
-                else
-                  echo "✅ [SUCCESS] All Data-Orchestrator variables are defined"
-                  echo "⚙️ [PROCESS] Importing variables from Airflow Secret yml file"
-                  export PLATFORM=$(grep -E '^[[:space:]]*PLATFORM:[[:space:]]*' $AIRFLOW_SECRET_FILE_NAME | awk '{print $2}' | tr -d "'" )
-                  export DBT_PROJECT_NAME=$(grep 'DBT_PROJECT_NAME:' $AIRFLOW_SECRET_FILE_NAME | tail -n1 | awk '{print $2}' | tr -d "'" )
-                  echo "✅ [SUCCESS] Platform and DBT project name imported"
                 fi
 
-                touch /workdir/status_check_dag_procedure.log
+                export PLATFORM=$(grep -E '^[[:space:]]*PLATFORM:[[:space:]]*' $AIRFLOW_SECRET_FILE_NAME | awk '{print $2}' | tr -d "'") || { echo "❌ [ERROR] Failed to extract PLATFORM"; exit 1; }
+                export DBT_PROJECT_NAME=$(grep 'DBT_PROJECT_NAME:' $AIRFLOW_SECRET_FILE_NAME | tail -n1 | awk '{print $2}' | tr -d "'") || { echo "❌ [ERROR] Failed to extract DBT_PROJECT_NAME"; exit 1; }
+                export DYNAMIC_DAG=$(grep 'DYNAMIC_DAG:' $AIRFLOW_SECRET_FILE_NAME | tail -n1 | awk '{print $2}' | tr -d "'") || true
+                echo "📋 [CONFIG] Platform: $PLATFORM | DBT Project: $DBT_PROJECT_NAME | Dynamic DAG: $DYNAMIC_DAG"
 
-                # Process DAGs for the current project
-                process_project_dags "$DBT_PROJECT_NAME" "$PLATFORM"
-                
-                cd ..
+                if [ "$DYNAMIC_DAG" == "True" ]; then
+                  # ===========================================
+                  # DYNAMIC DAG MODE — 3-WAVE ORDERED EXECUTION
+                  # ===========================================
+                  echo "🌊 [INFO] Dynamic DAG mode — executing 3-wave ordered run"
+
+                  dag_count=$(yq -r '.dags | length' /workdir/airflow_dags.yaml)
+                  echo "📋 [CONFIG] Total DAGs in airflow_dags.yaml: $dag_count"
+
+                  wave1_dags=()
+                  wave2_dags=()
+                  wave3_dags=()
+
+                  for i in $(seq 0 $((dag_count - 1))); do
+                    proj=$(yq -r ".dags[$i].project" /workdir/airflow_dags.yaml)
+                    if [ "$proj" != "$DBT_PROJECT_NAME" ]; then
+                      continue
+                    fi
+                    dag_id=$(yq -r ".dags[$i].dag_id" /workdir/airflow_dags.yaml)
+                    vars_file=$(yq -r ".dags[$i].variables_file" /workdir/airflow_dags.yaml)
+
+                    if [ ! -f "$vars_file" ]; then
+                      echo "⚠️ [WARNING] Variables file not found for DAG $dag_id: $vars_file — skipping wave classification"
+                      continue
+                    fi
+
+                    root_key=$(yq -r 'keys[0]' "$vars_file")
+                    dbt_seed=$(yq -r ".\"${root_key}\".DBT_SEED" "$vars_file")
+                    dbt_snapshot=$(yq -r ".\"${root_key}\".DBT_SNAPSHOT" "$vars_file")
+
+                    echo "📋 [CONFIG] DAG: $dag_id | DBT_SEED=$dbt_seed | DBT_SNAPSHOT=$dbt_snapshot"
+
+                    if [ "$dbt_seed" == "True" ]; then
+                      wave1_dags+=("$dag_id")
+                    elif [ "$dbt_seed" == "False" ] && [ "$dbt_snapshot" == "False" ]; then
+                      wave2_dags+=("$dag_id")
+                    elif [ "$dbt_snapshot" == "True" ]; then
+                      wave3_dags+=("$dag_id")
+                    else
+                      echo "⚠️ [WARNING] DAG $dag_id did not match any wave (SEED=$dbt_seed SNAPSHOT=$dbt_snapshot) — assigning to wave 2"
+                      wave2_dags+=("$dag_id")
+                    fi
+                  done
+
+                  echo "=========================================="
+                  echo "🌊 [WAVE 1] Seed DAGs (${#wave1_dags[@]}): ${wave1_dags[*]:-none}"
+                  echo "🌊 [WAVE 2] Model DAGs (${#wave2_dags[@]}): ${wave2_dags[*]:-none}"
+                  echo "🌊 [WAVE 3] Snapshot DAGs (${#wave3_dags[@]}): ${wave3_dags[*]:-none}"
+                  echo "=========================================="
+
+                  echo "🌊 [WAVE 1] Starting seed DAGs"
+                  run_wave "$PLATFORM" "${wave1_dags[@]}" || { echo "❌ [ERROR] Wave 1 (seed DAGs) failed — aborting"; exit 1; }
+                  echo "✅ [WAVE 1] Seed DAGs completed"
+
+                  echo "🌊 [WAVE 2] Starting model DAGs"
+                  run_wave "$PLATFORM" "${wave2_dags[@]}" || { echo "❌ [ERROR] Wave 2 (model DAGs) failed — aborting"; exit 1; }
+                  echo "✅ [WAVE 2] Model DAGs completed"
+
+                  echo "🌊 [WAVE 3] Starting snapshot DAGs"
+                  run_wave "$PLATFORM" "${wave3_dags[@]}" || { echo "❌ [ERROR] Wave 3 (snapshot DAGs) failed — aborting"; exit 1; }
+                  echo "✅ [WAVE 3] Snapshot DAGs completed"
+
+                else
+                  # ===========================================
+                  # STANDALONE DAG MODE — TRIGGER ALL, THEN CHECK ALL
+                  # ===========================================
+                  echo "📋 [INFO] Standalone DAG mode — trigger all then check all"
+
+                  mapfile -t all_dag_ids < <(yq -r '.dags[] | select(.project == "'$DBT_PROJECT_NAME'") | .dag_id' /workdir/airflow_dags.yaml)
+
+                  if [ ${#all_dag_ids[@]} -eq 0 ]; then
+                    echo "❌ [ERROR] No DAG configurations found for project $DBT_PROJECT_NAME in airflow_dags.yaml"
+                    exit 1
+                  fi
+
+                  echo "⚙️ [PROCESS] Triggering ${#all_dag_ids[@]} standalone DAG(s)"
+                  for dag_id in "${all_dag_ids[@]}"; do
+                    trigger_one_dag "$PLATFORM" "$dag_id" || { echo "❌ [ERROR] Failed to trigger DAG: $dag_id"; exit 1; }
+                  done
+
+                  echo "🔍 [CHECK] Checking status for ${#all_dag_ids[@]} standalone DAG(s)"
+                  for dag_id in "${all_dag_ids[@]}"; do
+                    check_one_dag_status "$PLATFORM" "$dag_id" || { echo "❌ [ERROR] DAG failed or timed out: $dag_id"; exit 1; }
+                  done
+                fi
+
+                cd .. || { echo "❌ [ERROR] Failed to return to parent directory"; exit 1; }
               else
-                echo "⚠️ [WARNING] Working on root - skipping directory processing"
+                echo "📋 [CONFIG] Working on root - skipping directory processing"
               fi
             done < /workdir/changed_folders.txt
 
-            # ===========================================
-            # Error Analysis and Final Status
-            # ===========================================
             echo "=========================================="
-            echo "🔍 [CHECK] Analyzing E2E test results"
-            echo "=========================================="
-
-            error_found=0
-
-            if [ ! -f "/workdir/status_check_dag_procedure.log" ]; then
-                echo "✅ [SUCCESS] No changes detected - status check log file does not exist"
-                echo "✅ [SUCCESS] E2E test procedure completed successfully"
-            else
-                echo "⚙️ [PROCESS] Analyzing status check log for errors"
-                
-                while read -r line; do
-                  if echo "$line" | grep -Ei "fail|error|forbidden|denied" > /dev/null; then
-                    echo "❌ [ERROR] Error found in E2E test procedure: $line"
-                    error_found=1
-                  fi
-                done < /workdir/status_check_dag_procedure.log
-
-                if [ $error_found -eq 1 ]; then
-                  echo "❌ [ERROR] E2E test procedure failed. Please check the logs for details"
-                  exit 1
-                else
-                  echo "✅ [SUCCESS] E2E test procedure completed successfully"
-                fi
-            fi
-
-            echo "=========================================="
-            echo "🎉 [COMPLETE] DBT Project DAG E2E Data-Pipeline Test procedure finished"
+            echo "🎉 [SUCCESS] DBT Project DAG E2E Run and Status procedure completed"
             echo "=========================================="
         env:
           - name: DBT_TARGET
@@ -3980,6 +3629,8 @@ spec:
             mountPath: /workdir
           - name: gcp-sa-secret-file
             mountPath: /secrets
+          - name: ssh-keys
+            mountPath: /root/.ssh/
     - name: data-model-e2e-data-tagging
       inputs:
         parameters:
@@ -5676,7 +5327,7 @@ spec:
       - name: data_orchestrator_core_image_name
         value: data-orchestrator-core
       - name: data_orchestrator_core_image_tag
-        value: v1.0.4
+        value: v1.0.6
       - name: dbt_workflow_core_image_name
         value: dbt-workflow-core
       - name: dbt_workflow_core_image_tag
